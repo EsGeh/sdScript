@@ -1,3 +1,9 @@
+/dependencies
+/build
+/build-aux
+/doc/build
+/doc/install
+
 # http://www.gnu.org/software/automake
 
 Makefile.in
