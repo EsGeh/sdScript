@@ -1,4 +1,4 @@
-#N canvas 0 30 990 854 10;
+#N canvas 992 30 606 263 10;
 #X obj 291 296 print OUT;
 #X obj 58 538 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
 -1;
@@ -104,14 +104,15 @@ values \, so that "s disjoint t == empty set" is true;
 #N canvas 0 30 990 854 Random 0;
 #X msg 324 124 list Print ( RndI ( 1 6 ) ) Out ( );
 #X msg 39 50 list Print ( Rnd ( -1 1 ) ) Out ( );
-#X text 321 105 pseudorandom values from a specific range;
-#X msg 410 181 list Print ( MinMax ( -5 5 Rnd ( ) ) ) Out ( );
 #X obj 89 292 outlet;
-#X connect 0 0 4 0;
-#X connect 1 0 4 0;
-#X connect 3 0 4 0;
+#X msg 373 197 list Print ( MinMax ( -5 5 Rnd ( 0 1 ) ) ) Out ( );
+#X text 37 25 float numbers from a range;
+#X text 321 105 pseudorandom integers from a specific range;
+#X connect 0 0 2 0;
+#X connect 1 0 2 0;
+#X connect 3 0 2 0;
 #X restore 778 17 pd Random;
-#N canvas 0 30 990 854 sgPack 0;
+#N canvas 0 30 990 854 sgPack 1;
 #X text 20 29 test constructing sgPacks:;
 #X msg 24 46 list Print ( Pack ( testPack Pack ( SubPack 1 2 3 ) Hussa
 Bla ) ) Out ( );
@@ -198,6 +199,7 @@ Get ( event ) ) ) Out ( );
 #X msg 649 316 list Print ( sgScale ( 6 2 1 11 ) ) Out ( );
 #X text 646 286 arguments: elCount \, stepAdd \, step0 \, startVal
 ;
+#X obj 778 41 s \$0-execScript;
 #X connect 1 0 22 0;
 #X connect 2 0 22 2;
 #X connect 3 0 2 0;
@@ -215,6 +217,7 @@ Get ( event ) ) ) Out ( );
 #X connect 15 0 36 0;
 #X connect 16 0 47 0;
 #X connect 17 0 20 0;
+#X connect 18 0 52 0;
 #X connect 21 0 0 0;
 #X connect 22 0 23 0;
 #X connect 24 0 25 0;
