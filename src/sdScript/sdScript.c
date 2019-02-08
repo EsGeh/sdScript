@@ -43,6 +43,9 @@ typedef struct SCommandInfo {
 DECL_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes)
 DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
 
+DECL_DYN_ARRAY(OutputBuf,t_atom)
+DEF_DYN_ARRAY(OutputBuf,t_atom)
+
 typedef struct _script_obj {
 	//internal obj information:
 	t_object obj;
@@ -67,8 +70,12 @@ typedef struct _script_obj {
 	// instruction pointer
 	t_int peek;
 	// output buffer:
+	OutputBuf outputBuffer;
+	//
+	/*
 	t_int outputBufferCount;
 	t_atom outputBuffer[OUTPUTBUFFER_LENGTH];
+	*/
 } t_script_obj;
 
 // constructor:
@@ -384,7 +391,8 @@ void* t_script_obj_init(
 	x -> metaCodeCount = 0;
 	
 	x -> peek = 0;
-	x -> outputBufferCount = 0;
+	//x -> outputBufferCount = 0;
+	OutputBuf_init( & x->outputBuffer );
 	x -> pSymbolTable = SymbolTable_New();
 	//ListSTEntryInit( & x->symbolTable );
 	ListAtomInit( & x->stack );
@@ -437,6 +445,7 @@ void t_script_obj_exit(
 )
 {
 	DB_PRINT("removing sgScript object...");
+	OutputBuf_exit( & pThis->outputBuffer );
 	freeProgram(pThis);
 	freeMetaProgram(pThis);
 	SymbolTable_Free( pThis -> pSymbolTable );
@@ -791,13 +800,18 @@ void print(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
 {
 	for ( int i=0; i<countArgs; i++)
 	{
+		/*
 		if( pThis->outputBufferCount + 1 > OUTPUTBUFFER_LENGTH )
 		{
 			pd_error( pThis, "output buffer overflow! (maximum: %i). You can try to recompile with bigger OUTPUTBUFFER_LENGTH", OUTPUTBUFFER_LENGTH );
 			return;
 		}
+		*/
+		OutputBuf_append( & pThis->outputBuffer, pArgs[i] );
+		/*
 		pThis -> outputBuffer [ pThis -> outputBufferCount ] = (pArgs[i]);
 		pThis -> outputBufferCount ++ ;
+		*/
 	}
 }
 
@@ -829,10 +843,11 @@ void out(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
 	outlet_list(
 		pThis -> pOutlet,
 		&s_list,
-		pThis -> outputBufferCount,
-		pThis -> outputBuffer
+		OutputBuf_get_size( & pThis -> outputBuffer ),
+		OutputBuf_get_array( & pThis -> outputBuffer )
 		);
-	pThis -> outputBufferCount = 0;
+	OutputBuf_clear( & pThis -> outputBuffer );
+	//pThis -> outputBufferCount = 0;
 }
 
 void addVar(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
