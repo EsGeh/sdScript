@@ -7,8 +7,7 @@
 
 #include "m_pd.h"
 
-#define MAX_PROGRAM_LENGTH 256
-#define OUTPUTBUFFER_LENGTH 256
+#define OUTPUTBUFFER_LENGTH 1024
 
 
 void sdScript_setup();

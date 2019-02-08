@@ -791,6 +791,11 @@ void print(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
 {
 	for ( int i=0; i<countArgs; i++)
 	{
+		if( pThis->outputBufferCount + 1 > OUTPUTBUFFER_LENGTH )
+		{
+			pd_error( pThis, "output buffer overflow! (maximum: %i). You can try to recompile with bigger OUTPUTBUFFER_LENGTH", OUTPUTBUFFER_LENGTH );
+			return;
+		}
 		pThis -> outputBuffer [ pThis -> outputBufferCount ] = (pArgs[i]);
 		pThis -> outputBufferCount ++ ;
 	}
