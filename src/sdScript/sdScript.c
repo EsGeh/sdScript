@@ -22,17 +22,47 @@ void sdScript_setup()
 */
 
 
-//typedef ListAtom Code;
+// predeclarations
+struct _script_obj;
 typedef t_atom Command;
-typedef Command* Code;
-struct SFunctionInfo;
-#define FunctionInfo struct SFunctionInfo
+typedef struct _script_obj t_script_obj;
+
+typedef void (*POperatorFunction) (struct _script_obj* pThis, t_int countParam, t_atom* pArgs);
 
 DECL_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes)
 DEF_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes);
 
-DECL_LIST(ListAtomPointer,ElementAtomPointer,t_atom*,getbytes,freebytes,)
-DEF_LIST(ListAtomPointer,ElementAtomPointer,t_atom*,getbytes,freebytes,);
+// pointers to atoms are considered references, therefore not deleted automatically:
+#pragma GCC diagnostic ignored "-Wunused-value"
+DECL_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,)
+DEF_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,);
+#pragma GCC diagnostic pop
+
+// describes the restrictions for a function:
+/*
+  Please notice:
+  if executeAfter != -1, the function may be executed BEFORE its closing ")".
+  it is therefore important, that such a function either jumps after after its corresponding ")" via "jump", or explicitely puts a new command on the command stack!
+*/
+typedef struct SFunctionInfo {
+	t_atom name;
+	t_int paramCount;
+	// -1 means variable
+
+	t_int executeAfter;
+	/* if != -1 this means the function is called after "executeAfter" parameters,
+		just ignoring the parameters that might follow
+	  -1 is the usual behaviour. the function is called when all parameters have
+	  	been parsed, that means when the ')' is found.
+	*/
+	POperatorFunction pFunc;
+} FunctionInfo;
+#define FUNCTIONINFO(VARNAME,NAME,PARAMCOUNT,EXECAFTER,PFUNC)\
+	FunctionInfo VARNAME;\
+	VARNAME . name = NAME;\
+	VARNAME . paramCount = PARAMCOUNT ;\
+	VARNAME . executeAfter = EXECAFTER ;\
+	VARNAME . pFunc = PFUNC
 
 // information kept during runtime for each function:
 typedef struct SCommandInfo {
@@ -46,7 +76,7 @@ DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
 DECL_DYN_ARRAY(OutputBuf,t_atom)
 DEF_DYN_ARRAY(OutputBuf,t_atom)
 
-typedef struct _script_obj {
+struct _script_obj {
 	//internal obj information:
 	t_object obj;
 	t_outlet* pOutlet;
@@ -60,23 +90,19 @@ typedef struct _script_obj {
 	ListCommand cmdStack;
 	// current program:
 	t_int currentProgCount;
-	Code currentCode;
+	Command* currentCode;
 	// code
 	t_int cmdCount;
-	Code code;
+	Command* code;
 	// code
 	t_int metaCodeCount;
-	Code metaCode;
+	Command* metaCode;
 	// instruction pointer
 	t_int peek;
 	// output buffer:
 	OutputBuf outputBuffer;
 	//
-	/*
-	t_int outputBufferCount;
-	t_atom outputBuffer[OUTPUTBUFFER_LENGTH];
-	*/
-} t_script_obj;
+};
 
 // constructor:
 void* t_script_obj_init(
@@ -110,34 +136,6 @@ void lexer_setIP(t_script_obj* pThis, t_int peek);
 void freeProgram(t_script_obj* pThis);
 void freeMetaProgram(t_script_obj* pThis);
 
-typedef void (*POperatorFunction) (t_script_obj* pThis, t_int countParam, t_atom* pArgs);
-
-// describes the restrictions for a function:
-/*
-  Please notice:
-  if executeAfter != -1, the function may be executed BEFORE its closing ")".
-  it is therefore important, that such a function either jumps after after its corresponding ")" via "jump", or explicitely puts a new command on the command stack!
-*/
-struct SFunctionInfo {
-	t_atom name;
-	t_int paramCount;
-	// -1 means variable
-
-	t_int executeAfter;
-	/* if != -1 this means the function is called after "executeAfter" parameters,
-		just ignoring the parameters that might follow
-	  -1 is the usual behaviour. the function is called when all parameters have
-	  	been parsed, that means when the ')' is found.
-	*/
-	POperatorFunction pFunc;
-};
-#define FUNCTIONINFO(VARNAME,NAME,PARAMCOUNT,EXECAFTER,PFUNC)\
-	FunctionInfo VARNAME;\
-	VARNAME . name = NAME;\
-	VARNAME . paramCount = PARAMCOUNT ;\
-	VARNAME . executeAfter = EXECAFTER ;\
-	VARNAME . pFunc = PFUNC
-
 //BOOL isFunction(t_atom* pToken);
 FunctionInfo* getFunctionInfo(t_atom* pToken);
 BOOL isValue(t_atom* pToken);
@@ -148,67 +146,67 @@ void tryToExecuteImmediately(t_script_obj* pThis);
 //BOOL isVar(t_atom* pToken);
 //BOOL isProc(t_atom* pToken);
 
-void add(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void sub(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void mul(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void div_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void mod(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// output:
-void print(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void pack(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void out(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// variables:
-void addVar(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void getVar(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void getVarA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void setVar(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void setVarA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// main variables:
-void addMainVar(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void clearMain(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// conditionality:
-void if_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// sgScales:
-void sgFunc(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void sgScale(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// boolean operators:
-void and_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void or_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void not_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// comparison operators:
-void isEqual(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void isNotEqual(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void isLessThan(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void isGreaterThan(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void isLessOrEqual(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void isGreaterOrEqual(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// Set operations:
-void setify(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void card(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void setOp(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void contains(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void calcTransp(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-
-void addA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void subA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void mulA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void divA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void modA(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-// random
-void sgMinMax(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void random_(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-
-// just throw away all parameters:
-void nop(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void returnAll(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-
-void rndInt(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void inc(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void dec(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-void rndIntUnequal(t_script_obj* pThis, t_int countArgs, t_atom* pArgs);
-
 #define PFUNCTION_HEADER(name) \
 void name(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
+
+PFUNCTION_HEADER(add);
+PFUNCTION_HEADER(sub);
+PFUNCTION_HEADER(mul);
+PFUNCTION_HEADER(div_);
+PFUNCTION_HEADER(mod);
+// output:
+PFUNCTION_HEADER(print);
+PFUNCTION_HEADER(pack);
+PFUNCTION_HEADER(out);
+// variables:
+PFUNCTION_HEADER(addVar);
+PFUNCTION_HEADER(getVar);
+PFUNCTION_HEADER(getVarA);
+PFUNCTION_HEADER(setVar);
+PFUNCTION_HEADER(setVarA);
+// main variables:
+PFUNCTION_HEADER(addMainVar);
+PFUNCTION_HEADER(clearMain);
+// conditionality:
+PFUNCTION_HEADER(if_);
+// sgScales:
+PFUNCTION_HEADER(sgFunc);
+PFUNCTION_HEADER(sgScale);
+// boolean operators:
+PFUNCTION_HEADER(and_);
+PFUNCTION_HEADER(or_);
+PFUNCTION_HEADER(not_);
+// comparison operators:
+PFUNCTION_HEADER(isEqual);
+PFUNCTION_HEADER(isNotEqual);
+PFUNCTION_HEADER(isLessThan);
+PFUNCTION_HEADER(isGreaterThan);
+PFUNCTION_HEADER(isLessOrEqual);
+PFUNCTION_HEADER(isGreaterOrEqual);
+// Set operations:
+PFUNCTION_HEADER(setify);
+PFUNCTION_HEADER(card);
+PFUNCTION_HEADER(setOp);
+PFUNCTION_HEADER(contains);
+PFUNCTION_HEADER(calcTransp);
+
+PFUNCTION_HEADER(addA);
+PFUNCTION_HEADER(subA);
+PFUNCTION_HEADER(mulA);
+PFUNCTION_HEADER(divA);
+PFUNCTION_HEADER(modA);
+// random
+PFUNCTION_HEADER(sgMinMax);
+PFUNCTION_HEADER(random_);
+
+// just throw away all parameters:
+PFUNCTION_HEADER(nop);
+PFUNCTION_HEADER(returnAll);
+
+PFUNCTION_HEADER(rndInt);
+PFUNCTION_HEADER(inc);
+PFUNCTION_HEADER(dec);
+PFUNCTION_HEADER(rndIntUnequal);
 
 //sgPack:
 PFUNCTION_HEADER( sgpackType );
@@ -1602,10 +1600,7 @@ PFUNCTION_HEADER( sgPackFromHuman )
 			SETFLOAT(pAtom, indexNew);
 			ListAtomAdd( & pThis->stack, pAtom);
 
-			t_atom** pPointer = getbytes( sizeof(t_atom*) );
-			*pPointer = pAtom;
-
-			ListAtomPointerAdd( &stackSizeInfo,pPointer);
+			ListAtomPointerAdd( &stackSizeInfo,pAtom);
 			indexNew ++;
 		}
 		else if( atom_getsymbol(pCurrent) == gensym(")") )
@@ -1614,7 +1609,7 @@ PFUNCTION_HEADER( sgPackFromHuman )
 			if( ListAtomPointerGetSize( &stackSizeInfo ) > 0 )
 			{
 				ElementAtomPointer* pEl = ListAtomPointerGetLast(&stackSizeInfo);
-				SETFLOAT( *pEl->pData, indexNew - atom_getfloat(*pEl->pData) -1 );
+				SETFLOAT( pEl->pData, indexNew - atom_getfloat(pEl->pData) -1 );
 				ListAtomPointerDel( &stackSizeInfo, pEl );
 			}
 			else
