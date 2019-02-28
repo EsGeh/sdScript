@@ -57,15 +57,12 @@ void lexer_setIP(t_script_obj* pThis, t_int peek);
 void freeProgram(t_script_obj* pThis);
 void freeMetaProgram(t_script_obj* pThis);
 
-//BOOL isFunction(t_atom* pToken);
 FunctionInfo* getFunctionInfo(t_atom* pToken);
 BOOL isValue(t_atom* pToken);
 /*
   checks if the next command is one that can be executed before all parameters have been read. If this is the case, and if there are enough parameters on stack for it, executed it.
 */
 void tryToExecuteImmediately(t_script_obj* pThis);
-//BOOL isVar(t_atom* pToken);
-//BOOL isProc(t_atom* pToken);
 
 //*********************************************
 
@@ -101,10 +98,6 @@ t_class* register_script_class( t_symbol* class_name )
 		class,
 		(t_method )sgScriptObj_OnExecMeta
 	);
-	/*class_addlist(
-		script_class,
-		(t_method )sgScriptObj_OnSetProgram
-	);*/
 	class_addmethod(
 		class,
 		(t_method )sgScriptObj_OnSetProgram,
@@ -115,20 +108,8 @@ t_class* register_script_class( t_symbol* class_name )
 		class,
 		(t_method )sgScriptObj_OnSetVar
 	);
-	//class_addfloat(sgScript_class, sgScriptOnInput);
 	return class;
 }
-
-// the constructor
-/*void* sgScriptNew()
-{
-	t_script_obj* x = (t_script_obj* )pd_new(script_class);
-	//x -> controlMessage = 0;
-	
-	//post("opening usb device...");
-	//TRY(!usbOpen(),MSG_COULD_NOT_OPEN);
-	return (void* )x;
-}*/
 
 void* t_script_obj_init(
 	t_symbol* name,
@@ -148,14 +129,10 @@ void* t_script_obj_init(
 	x -> metaCodeCount = 0;
 	
 	x -> peek = 0;
-	//x -> outputBufferCount = 0;
 	OutputBuf_init( & x->outputBuffer );
 	x -> pSymbolTable = SymbolTable_New();
-	//ListSTEntryInit( & x->symbolTable );
 	ListAtomInit( & x->stack );
 	ListCommandInit( & x->cmdStack );
-	//ListAtomInit( & x -> currentCode );
-	//x -> currentCode = getbytes(sizeof(t_atom)*MAX_PROGRAM_LENGTH);
 
 	x -> pOutlet = outlet_new( & x -> obj, &s_list);
 	inlet_new(
@@ -188,12 +165,6 @@ void* t_script_obj_init(
 		SymbolTable_AddMainVar(x -> pSymbolTable, entry);
 
 	}
-	/*x -> bufferLength = -1;
-	x -> outTriggers = outlet_new(& x->obj, &s_list);
-	x -> outSwitches = outlet_new(& x->obj, &s_list);
-	x -> outAnalog = outlet_new(& x->obj, &s_list);
-	x -> outMeta = outlet_new(&x->obj, &s_list);
-	x -> outMidi = outlet_new(& x->obj, &s_list);*/
 	return (void* )x;
 }
 
@@ -208,13 +179,7 @@ void t_script_obj_exit(
 	SymbolTable_Free( pThis -> pSymbolTable );
 	ListCommandExit( & pThis->cmdStack );
 	ListAtomExit( & pThis->stack );
-	//ListSTEntryExit( & pThis->symbolTable );
-	//freebytes(x -> currentCode);
-	//ListAtomExit( & pThis -> currentCode );
 }
-
-//DECL_LIST(ListInt,ElementInt,t_int,copybytes,getbytes,freebytes);
-//DEF_LIST(ListInt,ElementInt,t_int,copybytes,getbytes,freebytes);
 
 void sgScriptObj_OnExecute(t_script_obj* pThis)
 {
@@ -227,8 +192,7 @@ void sgScriptObj_OnExecMeta(t_script_obj* pThis, t_symbol* s, int argc, t_atom* 
 {
 	DB_PRINT("sgScriptObj_OnExecMeta");
 	freeMetaProgram(pThis);
-	/*if( pThis -> currentCode != pThis -> code )
-		freebytes(pThis -> currentCode, pThis->currentProgCount * sizeof(Command));*/
+
 	pThis -> metaCode = getbytes(sizeof(t_atom) * argc);
 	memcpy( pThis->metaCode, argv, sizeof(t_atom) * argc);
 	pThis -> metaCodeCount = argc;
@@ -269,8 +233,6 @@ ElementCommand* ifFunc(t_script_obj* pThis, FunctionInfo* pFunctionInfo)
 	DB_PRINT("Is a function");
 	// add the function to the command stack:
 	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
-	//pCurrentCommandInfo -> name = *pCurrentToken;
-	//pCurrentCommandInfo -> countParam = -1;
 	pCurrentCommandInfo -> stackHeight0 = ListAtomGetSize ( & pThis -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
 	pElCurrentFunction = ListCommandAdd ( & pThis -> cmdStack, pCurrentCommandInfo);
@@ -427,8 +389,6 @@ void lexer_setIP(t_script_obj* pThis, t_int peek)
 
 void callFunction(t_script_obj* pThis, FunctionInfo* pFunctionInfo, t_int countParam)
 {
-	// create an array of pointers to the parameters:
-	//t_atom** pArrayParam = getbytes( sizeof(t_atom* )* countParam);
 	// first copy params:
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
