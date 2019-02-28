@@ -26,6 +26,7 @@ lib_LTLIBRARIES = sdScript.la
 
 sdScript_la_SOURCES = \
   $(PATH_CODE)/sdScript.c $(PATH_CODE)/sdScript.h \
-  $(PATH_CODE)/SymbolTable.c $(PATH_CODE)/SymbolTable.h
+  $(PATH_CODE)/SymbolTable.c $(PATH_CODE)/SymbolTable.h \
+  $(PATH_CODE)/Function.c $(PATH_CODE)/Function.h
 
 sdScript_la_LDFLAGS = -module

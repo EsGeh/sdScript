@@ -14,7 +14,7 @@
 #X msg 383 455 list Print ( Get ( PARAM ) ) Out ( );
 #X obj 291 225 r \$0-execScript;
 #X obj 291 248 t b l;
-#N canvas 0 30 990 854 basic 0;
+#N canvas 0 30 798 854 basic 0;
 #X obj 70 331 outlet;
 #X text 276 192 test basic syntax;
 #X msg 134 98 list Print ( Add ( 2 3 ) ) Out ( );
