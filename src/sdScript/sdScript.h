@@ -8,7 +8,6 @@
 
 #include "m_pd.h"
 
-#define OUTPUTBUFFER_LENGTH 1024
 
 void sdScript_setup();
 

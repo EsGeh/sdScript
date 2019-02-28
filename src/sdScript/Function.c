@@ -7,18 +7,17 @@
 #include <stdlib.h>
 
 
+/*
 #define FUNCTION_COUNT 54
 FunctionInfo listFunctionInfo[FUNCTION_COUNT];
+*/
+
+DECL_DYN_ARRAY(FunctionInfos, FunctionInfo)
+DEF_DYN_ARRAY(FunctionInfos, FunctionInfo)
+
 
 FunctionInfo* pNOP;
 FunctionInfo* pRETURN_ALL;
-
-#define FUNCTIONINFO(VARNAME,NAME,PARAMCOUNT,EXECAFTER,PFUNC)\
-	FunctionInfo VARNAME;\
-	VARNAME . name = NAME;\
-	VARNAME . paramCount = PARAMCOUNT ;\
-	VARNAME . executeAfter = EXECAFTER ;\
-	VARNAME . pFunc = PFUNC
 
 #define PFUNCTION_HEADER(name) \
 void name(t_script_obj* pThis, t_int countArgs, t_atom* pArgs)
@@ -104,89 +103,109 @@ PFUNCTION_HEADER( sgDataGetRest );
 // deletes first pack from a list of sgPacks and returns it
 
 
-#define FINFO_INDEX(INDEX,NAME,PARAMCOUNT,EXECAFTER,PFUNC)\
-{\
-	t_atom atomName;\
-	SETSYMBOL( &atomName, gensym(NAME));\
-	listFunctionInfo[INDEX] . name = atomName;\
-	listFunctionInfo[INDEX] . paramCount = PARAMCOUNT ;\
-	listFunctionInfo[INDEX] . executeAfter = EXECAFTER ;\
-	listFunctionInfo[INDEX] . pFunc = PFUNC;\
+#define ADD_FUNCTION( NAME,PARAMCOUNT,EXECAFTER,PFUNC ) \
+{ \
+	t_atom atomName; \
+	SETSYMBOL( &atomName, gensym( NAME ) ); \
+ \
+	FunctionInfo func = { \
+		.name = atomName, \
+		.paramCount = PARAMCOUNT, \
+		.executeAfter = EXECAFTER, \
+		.pFunc = PFUNC \
+	}; \
+	FunctionInfos_append( &function_infos, \
+			func \
+	); \
 }
+
+FunctionInfos function_infos;
 
 void functions_init()
 {
-	FINFO_INDEX(0,"NOP",-1,-1,&nop);
-	FINFO_INDEX(1,"Add",2,-1,&add);
-	FINFO_INDEX(2,"Sub",2,-1,&sub);
-	FINFO_INDEX(3,"Mul",2,-1,&mul);
-	FINFO_INDEX(4,"Div",2,-1,&div_);
-	FINFO_INDEX(5,"Mod",2,-1,&mod);
-	FINFO_INDEX(6,"Print",-1,-1,&print);
-	FINFO_INDEX(7,"Pack",-1,-1,&pack);
-	FINFO_INDEX(8,"Out",0,-1,&out);
-	FINFO_INDEX(9,"Var",-1,-1,&addVar);
-	FINFO_INDEX(10,"Get",1,-1,&getVar);
-	FINFO_INDEX(11,"GetA",2,-1,&getVarA);
-	FINFO_INDEX(12,"Set",-1,-1,&setVar);
-	FINFO_INDEX(13,"SetA",-1,-1,&setVarA);
-	FINFO_INDEX(14,"If",-1,1,&if_);
-	FINFO_INDEX(15,"VarMain",-1,-1,&addMainVar);
-	FINFO_INDEX(16,"ClearMain",0,-1,&clearMain);
+	FunctionInfos_init( & function_infos );
+
+	ADD_FUNCTION("NOP",-1,-1,&nop);
+	ADD_FUNCTION("Add",2,-1,&add);
+	ADD_FUNCTION("Sub",2,-1,&sub);
+	ADD_FUNCTION("Mul",2,-1,&mul);
+	ADD_FUNCTION("Div",2,-1,&div_);
+	ADD_FUNCTION("Mod",2,-1,&mod);
+	ADD_FUNCTION("Print",-1,-1,&print);
+	ADD_FUNCTION("Pack",-1,-1,&pack);
+	ADD_FUNCTION("Out",0,-1,&out);
+	ADD_FUNCTION("Var",-1,-1,&addVar);
+	ADD_FUNCTION("Get",1,-1,&getVar);
+	ADD_FUNCTION("GetA",2,-1,&getVarA);
+	ADD_FUNCTION("Set",-1,-1,&setVar);
+	ADD_FUNCTION("SetA",-1,-1,&setVarA);
+	ADD_FUNCTION("If",-1,1,&if_);
+	ADD_FUNCTION("VarMain",-1,-1,&addMainVar);
+	ADD_FUNCTION("ClearMain",0,-1,&clearMain);
 	// sgScales:
 	// a | b , c , x
-	FINFO_INDEX(17,"sgFunc",4,-1,&sgFunc);
+	ADD_FUNCTION("sgFunc",4,-1,&sgFunc);
 	// # , a | b , c 
-	FINFO_INDEX(18,"sgScale",4,-1,&sgScale);
+	ADD_FUNCTION("sgScale",4,-1,&sgScale);
 	// boolean operators:
 
-	FINFO_INDEX(19,"&&",2,-1,&and_);
-	FINFO_INDEX(20,"||",2,-1,&or_);
-	FINFO_INDEX(21,"!",1,-1,&not_);
+	ADD_FUNCTION("&&",2,-1,&and_);
+	ADD_FUNCTION("||",2,-1,&or_);
+	ADD_FUNCTION("!",1,-1,&not_);
 	// comparison operators:
-	FINFO_INDEX(22,"==",2,-1,&isEqual);
-	FINFO_INDEX(23,"!=",2,-1,&isNotEqual);
-	FINFO_INDEX(24,"<",2,-1,&isLessThan);
-	FINFO_INDEX(25,">",2,-1,&isGreaterThan);
-	FINFO_INDEX(26,"<=",2,-1,&isLessOrEqual);
-	FINFO_INDEX(27,">=",2,-1,&isGreaterOrEqual);
+	ADD_FUNCTION("==",2,-1,&isEqual);
+	ADD_FUNCTION("!=",2,-1,&isNotEqual);
+	ADD_FUNCTION("<",2,-1,&isLessThan);
+	ADD_FUNCTION(">",2,-1,&isGreaterThan);
+	ADD_FUNCTION("<=",2,-1,&isLessOrEqual);
+	ADD_FUNCTION(">=",2,-1,&isGreaterOrEqual);
 	// Set operations:
-	FINFO_INDEX(28,"Setify",-1,-1,&setify);
-	FINFO_INDEX(29,"Card",-1,-1,&card);
-	FINFO_INDEX(30,"SetOp",-1,-1,&setOp);
-	FINFO_INDEX(31,"CalcTransp",-1,-1,&calcTransp);
-	FINFO_INDEX(32,"Contains",-1,-1,&contains);
-	FINFO_INDEX(33,"AddA",-1,-1,&addA);
-	FINFO_INDEX(34,"SubA",-1,-1,&subA);
-	FINFO_INDEX(35,"MulA",-1,-1,&mulA);
-	FINFO_INDEX(36,"DivA",-1,-1,&divA);
-	FINFO_INDEX(37,"ModA",-1,-1,&modA);
-	FINFO_INDEX(38,"Rnd",2,-1,&random_);
-	FINFO_INDEX(39,"MinMax",3,-1,&sgMinMax);
-	FINFO_INDEX(40,"RETURN_ALL",-1,-1,&returnAll);
-	FINFO_INDEX(41,"RndI",2,-1,&rndInt);
-	FINFO_INDEX(42,"Inc",1,-1,&inc);
-	FINFO_INDEX(43,"Dec",1,-1,&dec);
-	FINFO_INDEX(44,"RndIUnequal",-1,-1,&rndIntUnequal);
-	FINFO_INDEX(45,"sgPackGetType",-1,-1,&sgpackType);
-	FINFO_INDEX(46,"sgPackGetCount",-1,-1,&sgpackCount);
-	FINFO_INDEX(47,"sgPackGetParams",-1,-1,&sgpackParams);
-	FINFO_INDEX(48,"sgPackFromHuman",-1,-1,&sgPackFromHuman);
-	FINFO_INDEX(49,"sgDataGetPackFromType",-1,-1,&sgDataGetPackFromType);
-	FINFO_INDEX(50,"sgDataGetPackFromTypeRest",-1,-1,&sgDataGetPackFromTypeRest);
-	FINFO_INDEX(51,"sgDataGetPackFromIndex",-1,-1,&sgDataGetPackFromIndex);
-	FINFO_INDEX(52,"sgDataGetFirst",-1,-1,&sgDataGetFirst);
-	FINFO_INDEX(53,"sgDataGetRest",-1,-1,&sgDataGetRest);
-	pNOP = &listFunctionInfo[0];
-	pRETURN_ALL = &listFunctionInfo[40];
+	ADD_FUNCTION("Setify",-1,-1,&setify);
+	ADD_FUNCTION("Card",-1,-1,&card);
+	ADD_FUNCTION("SetOp",-1,-1,&setOp);
+	ADD_FUNCTION("CalcTransp",-1,-1,&calcTransp);
+	ADD_FUNCTION("Contains",-1,-1,&contains);
+	ADD_FUNCTION("AddA",-1,-1,&addA);
+	ADD_FUNCTION("SubA",-1,-1,&subA);
+	ADD_FUNCTION("MulA",-1,-1,&mulA);
+	ADD_FUNCTION("DivA",-1,-1,&divA);
+	ADD_FUNCTION("ModA",-1,-1,&modA);
+	ADD_FUNCTION("Rnd",2,-1,&random_);
+	ADD_FUNCTION("MinMax",3,-1,&sgMinMax);
+	ADD_FUNCTION("RETURN_ALL",-1,-1,&returnAll);
+	ADD_FUNCTION("RndI",2,-1,&rndInt);
+	ADD_FUNCTION("Inc",1,-1,&inc);
+	ADD_FUNCTION("Dec",1,-1,&dec);
+	ADD_FUNCTION("RndIUnequal",-1,-1,&rndIntUnequal);
+	ADD_FUNCTION("sgPackGetType",-1,-1,&sgpackType);
+	ADD_FUNCTION("sgPackGetCount",-1,-1,&sgpackCount);
+	ADD_FUNCTION("sgPackGetParams",-1,-1,&sgpackParams);
+	ADD_FUNCTION("sgPackFromHuman",-1,-1,&sgPackFromHuman);
+	ADD_FUNCTION("sgDataGetPackFromType",-1,-1,&sgDataGetPackFromType);
+	ADD_FUNCTION("sgDataGetPackFromTypeRest",-1,-1,&sgDataGetPackFromTypeRest);
+	ADD_FUNCTION("sgDataGetPackFromIndex",-1,-1,&sgDataGetPackFromIndex);
+	ADD_FUNCTION("sgDataGetFirst",-1,-1,&sgDataGetFirst);
+	ADD_FUNCTION("sgDataGetRest",-1,-1,&sgDataGetRest);
+
+	t_atom atom_temp;
+	SETSYMBOL( &atom_temp, gensym( "NOP" ) );
+	pNOP = getFunctionInfo( &atom_temp );
+	SETSYMBOL( &atom_temp, gensym( "RETURN_ALL" ) );
+	pRETURN_ALL = getFunctionInfo( &atom_temp );
+}
+
+void functions_exit()
+{
+	FunctionInfos_exit( &function_infos );
 }
 
 FunctionInfo* getFunctionInfo(t_atom* pName)
 {
-	for(int i=0; i<FUNCTION_COUNT; i++)
+	for(int i=0; i<FunctionInfos_get_size( &function_infos ); i++)
 	{
-		if( compareAtoms( & listFunctionInfo[i] . name, pName))
-			return & listFunctionInfo[i];
+		FunctionInfo* current = & FunctionInfos_get_array( &function_infos )[i];
+		if( compareAtoms( & current->name, pName))
+			return current;
 	}
 	return NULL;
 }
