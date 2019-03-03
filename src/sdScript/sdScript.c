@@ -50,13 +50,21 @@ void script_obj_on_set_program(
 		int argc,
 		t_atom* argv
 );
+void script_obj_on_set_bang(
+		t_script_obj* pThis,
+		t_symbol* s,
+		int argc,
+		t_atom* argv
+);
 void script_obj_on_del_program(
 		t_script_obj* pThis,
 		t_symbol* s
 );
 void script_obj_on_exec(
 	t_script_obj* pThis,
-	t_symbol* program
+	t_symbol* prog_name,
+	int argc,
+	t_atom* argv
 );
 void script_obj_on_set_var(
 	t_script_obj* pThis,
@@ -133,17 +141,20 @@ t_class* register_script_class( t_symbol* class_name )
 	);
 	class_addmethod(
 		class,
+		(t_method )script_obj_on_set_bang,
+		gensym("prog_set_bang"),
+		A_GIMME
+	);
+	class_addmethod(
+		class,
 		(t_method )script_obj_on_del_program,
 		gensym("prog_del"),
 		A_SYMBOL,
 		0
 	);
-	class_addmethod(
+	class_addanything(
 		class,
-		(t_method )script_obj_on_exec,
-		gensym("exec"),
-		A_SYMBOL,
-		0
+		(t_method )script_obj_on_exec
 	);
 	class_addmethod(
 		class,
@@ -167,14 +178,12 @@ void* t_script_obj_init(
 	x -> pSymbolTable = SymbolTable_New();
 
 	x -> pOutlet = outlet_new( & x -> obj, &s_list);
-	/*
 	inlet_new(
 		& x -> obj,
 		& x -> obj . ob_pd,
 		gensym("list"),
-		gensym("set_prog")
+		gensym("prog_set_bang")
 	);
-	*/
 	if( argc > 0 )
 	{
 		/*
@@ -227,17 +236,6 @@ void sdScript_output(
 	);
 }
 
-/*
-void script_obj_on_set_main(
-		t_script_obj* pThis,
-		t_symbol* s,
-		int argc,
-		t_atom* argv
-)
-{
-}
-*/
-
 void script_obj_on_set_program(
 	t_script_obj* pThis,
 	t_symbol* s,
@@ -275,6 +273,34 @@ void script_obj_on_set_program(
 	);
 }
 
+void script_obj_on_set_bang(
+		t_script_obj* pThis,
+		t_symbol* s,
+		int argc,
+		t_atom* argv
+)
+{
+	DB_PRINT("script_obj_on_set_bang");
+
+	t_symbol* prog_name = gensym( "bang" );
+	int prog_size = argc;
+
+	TokenBuf* new_program = getbytes( sizeof( TokenBuf ) );
+	TokenBuf_init( new_program, prog_size);
+	
+	memcpy(
+		TokenBuf_get_array( new_program ),
+		& argv[0],
+		sizeof( t_atom ) * prog_size
+	);
+
+	Programs_insert(
+		& pThis -> programs,
+		prog_name,
+		new_program
+	);
+}
+
 void script_obj_on_del_program(
 	t_script_obj* pThis,
 	t_symbol* prog_name
@@ -288,9 +314,18 @@ void script_obj_on_del_program(
 
 void script_obj_on_exec(
 	t_script_obj* pThis,
-	t_symbol* prog_name
+	t_symbol* prog_name,
+	int argc,
+	t_atom* argv
 )
 {
+	if(
+			argc != 0
+	)
+	{
+		pd_error( pThis, "sdScript: wrong syntax!"  );
+		return;
+	}
 	TokenBuf* prog = Programs_get(
 			& pThis -> programs,
 			prog_name
@@ -303,7 +338,7 @@ void script_obj_on_exec(
 		SETSYMBOL( & a_prog_name, prog_name );
 		char buffer[256];
 		atom_string( & a_prog_name, buffer, 255 );
-		pd_error( pThis, "sdScript: no such program: '%s'", buffer );
+		pd_error( pThis, "sdScript: no such comand or program: '%s'", buffer );
 		return;
 	}
 	ListAtom stack;
@@ -359,7 +394,7 @@ void script_obj_on_set_var(
 			prog_count,
 			prog
 	);
-	script_obj_on_exec( pThis, gensym("__INTERN_SET") );
+	script_obj_on_exec( pThis, gensym("__INTERN_SET"), 0, NULL );
 	freebytes( prog, sizeof(t_atom) * prog_count );
 }
 
