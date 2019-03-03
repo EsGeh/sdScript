@@ -5,8 +5,9 @@
 #include "m_pd.h"
 
 typedef struct _script_obj t_script_obj;
+typedef struct SRuntimeData t_rt;
 
-typedef void (*POperatorFunction) (struct _script_obj* pThis, t_int countParam, t_atom* pArgs);
+typedef void (*POperatorFunction) (t_rt* pThis, t_int countParam, t_atom* pArgs);
 
 
 // describes the restrictions for a function:
