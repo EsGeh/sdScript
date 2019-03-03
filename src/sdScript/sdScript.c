@@ -78,10 +78,43 @@ void sgScriptObj_exec(
 		RuntimeData* rt
 );
 
+//*********************************************
+// utils:
+
+ElementCommand* ifFunc(
+	RuntimeData* rt,
+	FunctionInfo* pFunctionInfo
+);
+
+ElementCommand* ifRightParenthesis(
+	RuntimeData* rt,
+	ElementCommand* pElCurrentFunction
+);
+
+void ifValue(
+		RuntimeData* rt,
+	t_atom* pCurrentToken
+);
+
+BOOL isValue(t_atom* pToken);
+
+// calls the function that is on the cmdStack
+void callFunction(
+		RuntimeData* rt,
+		FunctionInfo* pFunctionInfo,
+		t_int countParam
+);
+
+/*
+  checks if the next command is one that can be executed before all parameters have been read. If this is the case, and if there are enough parameters on stack for it, executed it.
+*/
+void tryToExecuteImmediately(
+		RuntimeData* rt
+);
+
+//*********************************************
 // lexer methods:
-typedef int POS;
-#define END_OF_FILE -1
-#define ERROR -2
+
 typedef BOOL TokenFits;
 
 t_atom* lexer_getNextToken(
@@ -92,24 +125,9 @@ TokenFits lexer_consumeNextToken(
 		t_atom* pExpectedSym
 );
 
-
-FunctionInfo* getFunctionInfo(t_atom* pToken);
-BOOL isValue(t_atom* pToken);
-/*
-  checks if the next command is one that can be executed before all parameters have been read. If this is the case, and if there are enough parameters on stack for it, executed it.
-*/
-void tryToExecuteImmediately(
-		RuntimeData* rt
-);
-
 //*********************************************
-
-// calls the function that is on the cmdStack
-void callFunction(
-		RuntimeData* rt,
-		FunctionInfo* pFunctionInfo,
-		t_int countParam
-);
+// implementation
+//*********************************************
 
 
 t_atom leftParenthesis, rightParenthesis, escapeBegin, escapeEnd;
@@ -398,77 +416,6 @@ void script_obj_on_set_var(
 	freebytes( prog, sizeof(t_atom) * prog_count );
 }
 
-ElementCommand* ifFunc(
-	RuntimeData* rt,
-	FunctionInfo* pFunctionInfo
-)
-{
-	ElementCommand* pElCurrentFunction = NULL;
-	// <func>
-	DB_PRINT("Is a function");
-	// add the function to the command stack:
-	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
-	pCurrentCommandInfo -> stackHeight0 =
-		ListAtomGetSize ( rt -> stack );
-	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
-	pElCurrentFunction = ListCommandAdd (
-			rt->cmdStack,
-			pCurrentCommandInfo
-	);
-
-	return pElCurrentFunction;
-}
-
-ElementCommand* ifRightParenthesis(
-	RuntimeData* rt,
-	ElementCommand* pElCurrentFunction
-)
-{
-	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
-	t_int paramCount =
-		ListAtomGetSize ( rt -> stack )
-		- pElCurrentFunction -> pData -> stackHeight0
-	;
-	if(
-		( pFunctionInfo -> paramCount == -1 )
-		|| ( pFunctionInfo -> paramCount == paramCount )
-	)
-	{
-		// execute the function:
-		callFunction(
-				rt,
-				pFunctionInfo,
-				paramCount
-		);
-		pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
-	}
-	else
-	{
-		char buf[256];
-		atom_string( &pFunctionInfo->name, buf, 255 );
-		post("ERROR: wrong number of parameters for function %s", buf);
-	}
-
-	//delete the function from Stack, becaus it has been executed:
-	ListCommandDel( rt -> cmdStack, pElCurrentFunction);
-	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
-	tryToExecuteImmediately(
-			rt
-	);
-	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
-	return pElCurrentFunction;
-}
-
-void ifValue(
-		RuntimeData* rt,
-	t_atom* pCurrentToken
-)
-{
-	// put value on stack:
-	t_atom* pValue = getbytes(sizeof(t_atom));
-	*pValue = *pCurrentToken;
-	ListAtomAdd( rt -> stack, pValue);
-}
 
 // executes the current code:
 void sgScriptObj_exec(
@@ -556,30 +503,89 @@ void sgScriptObj_exec(
 	}
 }
 
-// lexer methods:
-t_atom* lexer_getNextToken(
-		RuntimeData* rt
-)
-{
-	t_atom* pRet = 0;
-	if( rt -> peek < TokenBuf_get_size( rt -> current_prog ) )
-	//if( rt -> peek < rt -> currentProgCount )
-	{
-		pRet = & TokenBuf_get_array( rt -> current_prog )[ rt -> peek ];
-		rt -> peek += 1;
-	}
-	return pRet;
-}
+//*********************************************
+// utils:
 
-TokenFits lexer_consumeNextToken(
+ElementCommand* ifFunc(
 	RuntimeData* rt,
-	t_atom* pExpectedSym
+	FunctionInfo* pFunctionInfo
 )
 {
-	t_atom* pNextToken = lexer_getNextToken( rt );
-	return compareAtoms(pNextToken, pExpectedSym );
+	ElementCommand* pElCurrentFunction = NULL;
+	// <func>
+	DB_PRINT("Is a function");
+	// add the function to the command stack:
+	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
+	pCurrentCommandInfo -> stackHeight0 =
+		ListAtomGetSize ( rt -> stack );
+	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
+	pElCurrentFunction = ListCommandAdd (
+			rt->cmdStack,
+			pCurrentCommandInfo
+	);
+
+	return pElCurrentFunction;
 }
 
+ElementCommand* ifRightParenthesis(
+	RuntimeData* rt,
+	ElementCommand* pElCurrentFunction
+)
+{
+	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
+	t_int paramCount =
+		ListAtomGetSize ( rt -> stack )
+		- pElCurrentFunction -> pData -> stackHeight0
+	;
+	if(
+		( pFunctionInfo -> paramCount == -1 )
+		|| ( pFunctionInfo -> paramCount == paramCount )
+	)
+	{
+		// execute the function:
+		callFunction(
+				rt,
+				pFunctionInfo,
+				paramCount
+		);
+		pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+	}
+	else
+	{
+		char buf[256];
+		atom_string( &pFunctionInfo->name, buf, 255 );
+		post("ERROR: wrong number of parameters for function %s", buf);
+	}
+
+	//delete the function from Stack, becaus it has been executed:
+	ListCommandDel( rt -> cmdStack, pElCurrentFunction);
+	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+	tryToExecuteImmediately(
+			rt
+	);
+	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+	return pElCurrentFunction;
+}
+
+void ifValue(
+		RuntimeData* rt,
+	t_atom* pCurrentToken
+)
+{
+	// put value on stack:
+	t_atom* pValue = getbytes(sizeof(t_atom));
+	*pValue = *pCurrentToken;
+	ListAtomAdd( rt -> stack, pValue);
+}
+
+BOOL isValue(t_atom* pToken)
+{
+	if( atomEqualsString( pToken, "(" ) )
+		return FALSE;
+	return TRUE;
+}
+
+// calls the function that is on the cmdStack
 void callFunction(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo,
@@ -590,7 +596,6 @@ void callFunction(
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
 		ElementAtom* pElOpNext = ListAtomGetLast( rt -> stack);
-		//pArrayParam[countParam-1] = pElOpNext -> pData;
 		for ( int i=countParam-1; i>=0; i--)
 		{
 			pArgs[i] = *(pElOpNext-> pData);
@@ -612,13 +617,6 @@ void callFunction(
 	);
 	// free array of parameters:
 	freebytes( pArgs, sizeof(t_atom ) * countParam );
-}
-
-BOOL isValue(t_atom* pToken)
-{
-	if( atomEqualsString( pToken, "(" ) )
-		return FALSE;
-	return TRUE;
 }
 
 void tryToExecuteImmediately(
@@ -652,3 +650,28 @@ void tryToExecuteImmediately(
 	}
 }
 
+//*********************************************
+// lexer methods:
+
+t_atom* lexer_getNextToken(
+		RuntimeData* rt
+)
+{
+	t_atom* pRet = 0;
+	if( rt -> peek < TokenBuf_get_size( rt -> current_prog ) )
+	//if( rt -> peek < rt -> currentProgCount )
+	{
+		pRet = & TokenBuf_get_array( rt -> current_prog )[ rt -> peek ];
+		rt -> peek += 1;
+	}
+	return pRet;
+}
+
+TokenFits lexer_consumeNextToken(
+	RuntimeData* rt,
+	t_atom* pExpectedSym
+)
+{
+	t_atom* pNextToken = lexer_getNextToken( rt );
+	return compareAtoms(pNextToken, pExpectedSym );
+}
