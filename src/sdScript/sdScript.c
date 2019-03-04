@@ -73,9 +73,21 @@ void script_obj_on_set_var(
 	t_atom* argv
 );
 
+// ****************************
+// low level execution control:
+// ****************************
+void script_obj_init_prog(
+	t_script_obj* this,
+	t_symbol* prog_name
+);
+
+void script_obj_exit_prog(
+	t_script_obj* this
+);
+
 // executes the current code:
 void sgScriptObj_exec(
-		RuntimeData* rt
+	t_script_obj* this
 );
 
 //*********************************************
@@ -194,6 +206,11 @@ void* t_script_obj_init(
 	Programs_init( & x->programs, PROGRAMS_HASH_SIZE );
 	x -> pSymbolTable = SymbolTable_New();
 
+	x->clock = clock_new( 
+			x,
+			(t_method )sgScriptObj_exec
+	);
+
 	x -> pOutlet = outlet_new( & x -> obj, &s_list);
 	inlet_new(
 		& x -> obj,
@@ -234,6 +251,15 @@ void t_script_obj_exit(
 	t_script_obj* pThis
 )
 {
+
+	if( pThis->clock)
+		clock_free( pThis -> clock );
+
+	if( pThis->rt )
+	{
+		script_obj_exit_prog( pThis );
+	}
+
 	DB_PRINT("removing sgScript object...");
 	Programs_exit( & pThis->programs );
 	SymbolTable_Free( pThis -> pSymbolTable );
@@ -343,12 +369,20 @@ void script_obj_on_exec(
 		pd_error( pThis, "sdScript: wrong syntax!"  );
 		return;
 	}
-	TokenBuf* prog = Programs_get(
-			& pThis -> programs,
+	// if some program is still loaded, clean it up:
+	if(
+			pThis -> rt
+	)
+	{
+		script_obj_exit_prog( pThis );
+	}
+
+	script_obj_init_prog(
+			pThis,
 			prog_name
 	);
 	if(
-			prog == NULL
+			! pThis->rt
 	)
 	{
 		t_atom a_prog_name;
@@ -358,32 +392,19 @@ void script_obj_on_exec(
 		pd_error( pThis, "sdScript: no such comand or program: '%s'", buffer );
 		return;
 	}
-	ListAtom stack;
-	ListCommand cmd_stack;
-	OutputBuf output_buffer;
-
-	ListAtomInit( &stack );
-	ListCommandInit( &cmd_stack );
-	OutputBuf_init( &output_buffer );
-
-	RuntimeData rt = {
-		.current_prog_name = prog_name,
-		.current_prog = prog,
-		.pSymbolTable = pThis-> pSymbolTable,
-		.skipMode = FALSE,
-		.stack = &stack,
-		.cmdStack = &cmd_stack,
-		.peek = 0,
-		.outputBuffer = &output_buffer,
-		.script_obj = pThis
-	};
 	sgScriptObj_exec(
-			&rt
+			pThis
 	);
-
-	OutputBuf_exit( &output_buffer );
-	ListAtomExit( &stack );
-	ListCommandExit( &cmd_stack );
+	if(
+		pThis->rt->delay
+	)
+	{
+		clock_delay( pThis->clock, pThis->rt->delay );
+	}
+	else
+	{
+		script_obj_exit_prog( pThis );
+	}
 }
 
 void script_obj_on_set_var(
@@ -416,17 +437,86 @@ void script_obj_on_set_var(
 }
 
 
-// executes the current code:
-void sgScriptObj_exec(
-	RuntimeData* rt
+// ****************************
+// low level execution control:
+// ****************************
+
+void script_obj_init_prog(
+	t_script_obj* this,
+	t_symbol* prog_name
 )
 {
-	int countParenthesisRightIgnore = 1;
-	BOOL escape = FALSE;
+	TokenBuf* prog = Programs_get(
+			& this -> programs,
+			prog_name
+	);
+	if( !prog )
+	{
+		return;
+	}
+
+	RuntimeData* rt = getbytes( sizeof( RuntimeData ) );
+	ListAtom* stack = getbytes( sizeof( ListAtom ) );
+	ListCommand* cmd_stack = getbytes( sizeof( ListCommand ) );
+	OutputBuf* output_buffer = getbytes( sizeof( OutputBuf ) );
+
+	ListAtomInit( stack );
+	ListCommandInit( cmd_stack );
+	OutputBuf_init( output_buffer );
+
+	(*rt) = (RuntimeData) {
+		.current_prog_name = prog_name,
+		.current_prog = prog,
+		.pSymbolTable = this-> pSymbolTable,
+		.stack = stack,
+		.cmdStack = cmd_stack,
+		.peek = 0,
+		.outputBuffer = output_buffer,
+		.script_obj = this,
+
+		.countParenthesisRightIgnore = 1,
+		.escape = FALSE,
+		.skipMode = FALSE,
+		.delay = 0
+	};
 	SymbolTable_Clear( rt -> pSymbolTable );
+	this->rt = rt;
+}
+
+
+void script_obj_exit_prog(
+	t_script_obj* this
+)
+{
+	RuntimeData* rt = this->rt;
+
+	OutputBuf_exit( rt -> outputBuffer );
+	ListAtomExit(  rt -> stack );
+	ListCommandExit( rt -> cmdStack );
+
+	freebytes( rt->stack, sizeof( ListAtom ) );
+	freebytes( rt->cmdStack, sizeof( ListCommand ) );
+	freebytes( rt->outputBuffer, sizeof( OutputBuf ) );
+	freebytes( rt, sizeof( RuntimeData ) );
+
+	this->rt = NULL;
+}
+
+// executes the current code:
+void sgScriptObj_exec(
+	t_script_obj* this
+)
+{
+
+	RuntimeData* rt = this->rt;
+	rt -> delay = 0;
 
 	t_atom* pCurrentToken=NULL;
-	while( (pCurrentToken = lexer_getNextToken(rt)) )
+	while(
+		( rt->delay == 0 )
+		&&
+		(pCurrentToken = lexer_getNextToken(rt))
+	)
 	{
 		char buf[256];
 		atom_string(pCurrentToken, buf, 256);
@@ -435,16 +525,16 @@ void sgScriptObj_exec(
 		// 1. switch escape mode on/off:
 		if( compareAtoms(pCurrentToken, &escapeBegin) )
 		{
-			escape = TRUE;
+			rt->escape = TRUE;
 		}
 		else if( compareAtoms(pCurrentToken, &escapeEnd) )
 		{
-			if (escape == FALSE)
+			if (rt->escape == FALSE)
 				post("ERROR: #] found, without corresponding #[!");
-			escape = FALSE;
+			rt->escape = FALSE;
 		}
 
-		else if( !escape)
+		else if( ! rt->escape)
 		{
 			FunctionInfo* pFunctionInfo = getFunctionInfo( pCurrentToken );
 			// <Command>
@@ -459,18 +549,18 @@ void sgScriptObj_exec(
 					post("ERROR: '(' expected, after ...");
 				}
 				else if( rt->skipMode )
-					(countParenthesisRightIgnore) ++;
+					(rt->countParenthesisRightIgnore) ++;
 			}
 			// ')'
 			else if( compareAtoms(pCurrentToken,&rightParenthesis) )
 			{
 				if( rt->skipMode )
 				{
-					countParenthesisRightIgnore --;
-					if( countParenthesisRightIgnore == 0 )
+					rt->countParenthesisRightIgnore --;
+					if( rt->countParenthesisRightIgnore == 0 )
 					{
 						rt -> skipMode = FALSE;
-						countParenthesisRightIgnore = 1;
+						rt->countParenthesisRightIgnore = 1;
 					}
 				}
 				else if ( ListCommandGetSize( rt->cmdStack ) )
@@ -566,7 +656,6 @@ void utils_pop_cmd_and_exec(
 	utils_try_to_exec_immediately(
 			rt
 	);
-	return pElCurrentFunction;
 }
 
 void utils_push_value(

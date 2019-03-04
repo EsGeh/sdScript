@@ -46,8 +46,7 @@ typedef struct SRuntimeData {
 
 	SymbolTable* pSymbolTable;
 
-	// skip mode (default FALSE):
-	BOOL skipMode;
+
 	// return stack
 	ListAtom* stack;
 	// CommandStack:
@@ -56,6 +55,13 @@ typedef struct SRuntimeData {
 	t_int peek;
 	// output buffer:
 	OutputBuf* outputBuffer;
+
+	int countParenthesisRightIgnore;
+	BOOL escape;
+	// skip mode (default FALSE):
+	BOOL skipMode;
+	// if != 0: wait before next cmd:
+	double delay;
 
 	t_script_obj* script_obj;
 } RuntimeData;
@@ -71,6 +77,12 @@ struct _script_obj {
 
 	// programs
 	Programs programs;
+
+	// while running: stores the execution state
+	RuntimeData* rt;
+
+	// clock needed for the "Delay" command:
+	t_clock *clock;
 };
 
 void sdScript_output(

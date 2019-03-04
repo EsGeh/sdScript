@@ -103,7 +103,11 @@ PFUNCTION_HEADER( sgDataGetRest );
 // deletes first pack from a list of sgPacks and returns it
 
 
-#define ADD_FUNCTION( NAME,PARAMCOUNT,EXECAFTER,PFUNC ) \
+PFUNCTION_HEADER( delay );
+// deletes first pack from a list of sgPacks and returns it
+
+
+#define ADD_FUNCTION( NAME,PFUNC,PARAMCOUNT,EXECAFTER) \
 { \
 	t_atom atomName; \
 	SETSYMBOL( &atomName, gensym( NAME ) ); \
@@ -119,73 +123,75 @@ PFUNCTION_HEADER( sgDataGetRest );
 	); \
 }
 
+
 FunctionInfos function_infos;
 
 void functions_init()
 {
 	FunctionInfos_init( & function_infos );
 
-	ADD_FUNCTION("NOP",-1,-1,&nop);
-	ADD_FUNCTION("Add",2,-1,&add);
-	ADD_FUNCTION("Sub",2,-1,&sub);
-	ADD_FUNCTION("Mul",2,-1,&mul);
-	ADD_FUNCTION("Div",2,-1,&div_);
-	ADD_FUNCTION("Mod",2,-1,&mod);
-	ADD_FUNCTION("Print",-1,-1,&print);
-	ADD_FUNCTION("Pack",-1,-1,&pack);
-	ADD_FUNCTION("Out",0,-1,&out);
-	ADD_FUNCTION("Var",-1,-1,&addVar);
-	ADD_FUNCTION("Get",1,-1,&getVar);
-	ADD_FUNCTION("GetA",2,-1,&getVarA);
-	ADD_FUNCTION("Set",-1,-1,&setVar);
-	ADD_FUNCTION("SetA",-1,-1,&setVarA);
-	ADD_FUNCTION("If",-1,1,&if_);
-	ADD_FUNCTION("VarMain",-1,-1,&addMainVar);
-	ADD_FUNCTION("ClearMain",0,-1,&clearMain);
+	ADD_FUNCTION("NOP",&nop,-1,-1);
+	ADD_FUNCTION("Add",&add,2,-1);
+	ADD_FUNCTION("Sub",&sub,2,-1);
+	ADD_FUNCTION("Mul",&mul,2,-1);
+	ADD_FUNCTION("Div",&div_,2,-1);
+	ADD_FUNCTION("Mod",&mod,2,-1);
+	ADD_FUNCTION("Print",&print,-1,-1);
+	ADD_FUNCTION("Pack",&pack,-1,-1);
+	ADD_FUNCTION("Out",&out,0,-1);
+	ADD_FUNCTION("Var",&addVar,-1,-1);
+	ADD_FUNCTION("Get",&getVar,1,-1);
+	ADD_FUNCTION("GetA",&getVarA,2,-1);
+	ADD_FUNCTION("Set",&setVar,-1,-1);
+	ADD_FUNCTION("SetA",&setVarA,-1,-1);
+	ADD_FUNCTION("If",&if_,-1,1);
+	ADD_FUNCTION("VarMain",&addMainVar,-1,-1);
+	ADD_FUNCTION("ClearMain",&clearMain,0,-1);
 	// sgScales:
 	// a | b , c , x
-	ADD_FUNCTION("sgFunc",4,-1,&sgFunc);
+	ADD_FUNCTION("sgFunc",&sgFunc,4,-1);
 	// # , a | b , c 
-	ADD_FUNCTION("sgScale",4,-1,&sgScale);
+	ADD_FUNCTION("sgScale",&sgScale,4,-1);
 	// boolean operators:
 
-	ADD_FUNCTION("&&",2,-1,&and_);
-	ADD_FUNCTION("||",2,-1,&or_);
-	ADD_FUNCTION("!",1,-1,&not_);
+	ADD_FUNCTION("&&",&and_,2,-1);
+	ADD_FUNCTION("||",&or_,2,-1);
+	ADD_FUNCTION("!",&not_,1,-1);
 	// comparison operators:
-	ADD_FUNCTION("==",2,-1,&isEqual);
-	ADD_FUNCTION("!=",2,-1,&isNotEqual);
-	ADD_FUNCTION("<",2,-1,&isLessThan);
-	ADD_FUNCTION(">",2,-1,&isGreaterThan);
-	ADD_FUNCTION("<=",2,-1,&isLessOrEqual);
-	ADD_FUNCTION(">=",2,-1,&isGreaterOrEqual);
+	ADD_FUNCTION("==",&isEqual,2,-1);
+	ADD_FUNCTION("!=",&isNotEqual,2,-1);
+	ADD_FUNCTION("<",&isLessThan,2,-1);
+	ADD_FUNCTION(">",&isGreaterThan,2,-1);
+	ADD_FUNCTION("<=",&isLessOrEqual,2,-1);
+	ADD_FUNCTION(">=",&isGreaterOrEqual,2,-1);
 	// Set operations:
-	ADD_FUNCTION("Setify",-1,-1,&setify);
-	ADD_FUNCTION("Card",-1,-1,&card);
-	ADD_FUNCTION("SetOp",-1,-1,&setOp);
-	ADD_FUNCTION("CalcTransp",-1,-1,&calcTransp);
-	ADD_FUNCTION("Contains",-1,-1,&contains);
-	ADD_FUNCTION("AddA",-1,-1,&addA);
-	ADD_FUNCTION("SubA",-1,-1,&subA);
-	ADD_FUNCTION("MulA",-1,-1,&mulA);
-	ADD_FUNCTION("DivA",-1,-1,&divA);
-	ADD_FUNCTION("ModA",-1,-1,&modA);
-	ADD_FUNCTION("Rnd",2,-1,&random_);
-	ADD_FUNCTION("MinMax",3,-1,&sgMinMax);
-	ADD_FUNCTION("RETURN_ALL",-1,-1,&returnAll);
-	ADD_FUNCTION("RndI",2,-1,&rndInt);
-	ADD_FUNCTION("Inc",1,-1,&inc);
-	ADD_FUNCTION("Dec",1,-1,&dec);
-	ADD_FUNCTION("RndIUnequal",-1,-1,&rndIntUnequal);
-	ADD_FUNCTION("sgPackGetType",-1,-1,&sgpackType);
-	ADD_FUNCTION("sgPackGetCount",-1,-1,&sgpackCount);
-	ADD_FUNCTION("sgPackGetParams",-1,-1,&sgpackParams);
-	ADD_FUNCTION("sgPackFromHuman",-1,-1,&sgPackFromHuman);
-	ADD_FUNCTION("sgDataGetPackFromType",-1,-1,&sgDataGetPackFromType);
-	ADD_FUNCTION("sgDataGetPackFromTypeRest",-1,-1,&sgDataGetPackFromTypeRest);
-	ADD_FUNCTION("sgDataGetPackFromIndex",-1,-1,&sgDataGetPackFromIndex);
-	ADD_FUNCTION("sgDataGetFirst",-1,-1,&sgDataGetFirst);
-	ADD_FUNCTION("sgDataGetRest",-1,-1,&sgDataGetRest);
+	ADD_FUNCTION("Setify",&setify,-1,-1);
+	ADD_FUNCTION("Card",&card,-1,-1);
+	ADD_FUNCTION("SetOp",&setOp,-1,-1);
+	ADD_FUNCTION("CalcTransp",&calcTransp,-1,-1);
+	ADD_FUNCTION("Contains",&contains,-1,-1);
+	ADD_FUNCTION("AddA",&addA,-1,-1);
+	ADD_FUNCTION("SubA",&subA,-1,-1);
+	ADD_FUNCTION("MulA",&mulA,-1,-1);
+	ADD_FUNCTION("DivA",&divA,-1,-1);
+	ADD_FUNCTION("ModA",&modA,-1,-1);
+	ADD_FUNCTION("Rnd",&random_,2,-1);
+	ADD_FUNCTION("MinMax",&sgMinMax,3,-1);
+	ADD_FUNCTION("RETURN_ALL",&returnAll,-1,-1);
+	ADD_FUNCTION("RndI",&rndInt,2,-1);
+	ADD_FUNCTION("Inc",&inc,1,-1);
+	ADD_FUNCTION("Dec",&dec,1,-1);
+	ADD_FUNCTION("RndIUnequal",&rndIntUnequal,-1,-1);
+	ADD_FUNCTION("sgPackGetType",&sgpackType,-1,-1);
+	ADD_FUNCTION("sgPackGetCount",&sgpackCount,-1,-1);
+	ADD_FUNCTION("sgPackGetParams",&sgpackParams,-1,-1);
+	ADD_FUNCTION("sgPackFromHuman",&sgPackFromHuman,-1,-1);
+	ADD_FUNCTION("sgDataGetPackFromType",&sgDataGetPackFromType,-1,-1);
+	ADD_FUNCTION("sgDataGetPackFromTypeRest",&sgDataGetPackFromTypeRest,-1,-1);
+	ADD_FUNCTION("sgDataGetPackFromIndex",&sgDataGetPackFromIndex,-1,-1);
+	ADD_FUNCTION("sgDataGetFirst",&sgDataGetFirst,-1,-1);
+	ADD_FUNCTION("sgDataGetRest",&sgDataGetRest,-1,-1);
+	ADD_FUNCTION("Delay", &delay, 1, -1 );
 
 	t_atom atom_temp;
 	SETSYMBOL( &atom_temp, gensym( "NOP" ) );
@@ -1211,4 +1217,10 @@ PFUNCTION_HEADER( sgDataGetRest )
 		pos += (2 + count);
 		//indexCurrent ++;
 	}*/
+}
+
+PFUNCTION_HEADER( delay )
+{
+	rt->delay =
+		atom_getint( & pArgs[0] );
 }

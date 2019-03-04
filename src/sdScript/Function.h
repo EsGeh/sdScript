@@ -27,6 +27,7 @@ typedef struct SFunctionInfo {
 	  -1 is the usual behaviour. the function is called when all parameters have
 	  	been parsed, that means when the ')' is found.
 	*/
+
 	POperatorFunction pFunc;
 } FunctionInfo;
 
