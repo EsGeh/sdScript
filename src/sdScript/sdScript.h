@@ -65,9 +65,11 @@ struct _script_obj {
 	//internal obj information:
 	t_object obj;
 	t_outlet* pOutlet;
+
 	//symbol table
 	SymbolTable* pSymbolTable;
 
+	// programs
 	Programs programs;
 };
 
@@ -76,32 +78,5 @@ void sdScript_output(
 	int argc,
 	t_atom* argv
 );
-
-/*
-struct _script_obj {
-	//internal obj information:
-	t_object obj;
-	t_outlet* pOutlet;
-	// skip mode (default FALSE):
-	BOOL skipMode;
-	//symbol table
-	SymbolTable* pSymbolTable;
-	// return stack
-	ListAtom stack;
-	// CommandStack:
-	ListCommand cmdStack;
-	// current program:
-	t_int currentProgCount;
-
-	Programs programs;
-	//t_symbol* current_program;
-	//CommandBuf* currentCode;
-	// instruction pointer
-	t_int peek;
-	// output buffer:
-	OutputBuf outputBuffer;
-	//
-};
-*/
 
 #endif 

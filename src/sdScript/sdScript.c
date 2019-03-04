@@ -81,25 +81,24 @@ void sgScriptObj_exec(
 //*********************************************
 // utils:
 
-ElementCommand* ifFunc(
+void utils_push_cmd(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo
 );
 
-ElementCommand* ifRightParenthesis(
-	RuntimeData* rt,
-	ElementCommand* pElCurrentFunction
+void utils_pop_cmd_and_exec(
+	RuntimeData* rt
 );
 
-void ifValue(
-		RuntimeData* rt,
+void utils_push_value(
+	RuntimeData* rt,
 	t_atom* pCurrentToken
 );
 
-BOOL isValue(t_atom* pToken);
+BOOL utils_is_value(t_atom* pToken);
 
 // calls the function that is on the cmdStack
-void callFunction(
+void utils_call_function(
 		RuntimeData* rt,
 		FunctionInfo* pFunctionInfo,
 		t_int countParam
@@ -108,7 +107,7 @@ void callFunction(
 /*
   checks if the next command is one that can be executed before all parameters have been read. If this is the case, and if there are enough parameters on stack for it, executed it.
 */
-void tryToExecuteImmediately(
+void utils_try_to_exec_immediately(
 		RuntimeData* rt
 );
 
@@ -426,79 +425,85 @@ void sgScriptObj_exec(
 	BOOL escape = FALSE;
 	SymbolTable_Clear( rt -> pSymbolTable );
 
-	ElementCommand* pElCurrentFunction = NULL; // topmost function on the command stack
 	t_atom* pCurrentToken=NULL;
 	while( (pCurrentToken = lexer_getNextToken(rt)) )
 	{
 		char buf[256];
 		atom_string(pCurrentToken, buf, 256);
 		DB_PRINT("current Token: '%s'", buf);
+
+		// 1. switch escape mode on/off:
 		if( compareAtoms(pCurrentToken, &escapeBegin) )
 		{
 			escape = TRUE;
-			continue;
 		}
-		if( compareAtoms(pCurrentToken, &escapeEnd) )
+		else if( compareAtoms(pCurrentToken, &escapeEnd) )
 		{
 			if (escape == FALSE)
 				post("ERROR: #] found, without corresponding #[!");
 			escape = FALSE;
-			continue;
 		}
-		FunctionInfo* pFunctionInfo = NULL;
-		if( !escape)
-			pFunctionInfo = getFunctionInfo( pCurrentToken );
-		if( pFunctionInfo )
+
+		else if( !escape)
 		{
-			if( ! rt -> skipMode )
-				pElCurrentFunction = ifFunc(rt,pFunctionInfo);	
-			// eat the "(" that follows:
-			if( ! lexer_consumeNextToken(rt, & leftParenthesis) )
+			FunctionInfo* pFunctionInfo = getFunctionInfo( pCurrentToken );
+			// <Command>
+			if( pFunctionInfo )
 			{
-				// report syntax error:
-				post("ERROR: '(' expected, after ...");
+				if( ! rt -> skipMode )
+					utils_push_cmd(rt,pFunctionInfo);	
+				// eat the "(" that follows:
+				if( ! lexer_consumeNextToken(rt, & leftParenthesis) )
+				{
+					// report syntax error:
+					post("ERROR: '(' expected, after ...");
+				}
+				else if( rt->skipMode )
+					(countParenthesisRightIgnore) ++;
+			}
+			// ')'
+			else if( compareAtoms(pCurrentToken,&rightParenthesis) )
+			{
+				if( rt->skipMode )
+				{
+					countParenthesisRightIgnore --;
+					if( countParenthesisRightIgnore == 0 )
+					{
+						rt -> skipMode = FALSE;
+						countParenthesisRightIgnore = 1;
+					}
+				}
+				else if ( ListCommandGetSize( rt->cmdStack ) )
+				{
+					utils_pop_cmd_and_exec( rt );
+				}
+				else
+					post("ERROR: ')' found, but no corresponding 'func ('");
 			}
 			else if( rt->skipMode )
-				(countParenthesisRightIgnore) ++;
-		}
-		else if ((!escape) && (compareAtoms(pCurrentToken,&rightParenthesis)))
-		{
-			if( rt->skipMode )
 			{
-				countParenthesisRightIgnore --;
-				if( countParenthesisRightIgnore == 0 )
-				{
-					rt -> skipMode = FALSE;
-					countParenthesisRightIgnore = 1;
-				}
-				continue;
+				// just skip
 			}
-			// ")"
-			if (pElCurrentFunction)
+			// <value>
+			else if (utils_is_value(pCurrentToken))
 			{
-				pElCurrentFunction =
-					ifRightParenthesis(rt,pElCurrentFunction);
-			}
-			else
-				post("ERROR: ')' found, but no corresponding 'func ('");
-		}
-		else
-		{
-			DB_PRINT("is a value");
-			if( rt->skipMode )
-				continue;
-
-			// if in escape mode, everything is considered a value:
-			if (escape || isValue(pCurrentToken))
-			{
-				ifValue(rt,pCurrentToken);
+				utils_push_value(rt,pCurrentToken);
 			}
 			else
 			{
 				post("ERROR: token is neither function, var, or procedure: '%s'",buf);
 			}
-			tryToExecuteImmediately(rt);
-			pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+			utils_try_to_exec_immediately(rt);
+		}
+		else // we are in escape mode:
+		{
+			DB_PRINT("is a value");
+			if( ! rt->skipMode )
+			{
+				// if in escape mode, everything is considered a value:
+				utils_push_value(rt,pCurrentToken);
+				utils_try_to_exec_immediately(rt);
+			}
 		}
 	}
 }
@@ -506,12 +511,11 @@ void sgScriptObj_exec(
 //*********************************************
 // utils:
 
-ElementCommand* ifFunc(
+void utils_push_cmd(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo
 )
 {
-	ElementCommand* pElCurrentFunction = NULL;
 	// <func>
 	DB_PRINT("Is a function");
 	// add the function to the command stack:
@@ -519,19 +523,19 @@ ElementCommand* ifFunc(
 	pCurrentCommandInfo -> stackHeight0 =
 		ListAtomGetSize ( rt -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
-	pElCurrentFunction = ListCommandAdd (
+	ListCommandAdd (
 			rt->cmdStack,
 			pCurrentCommandInfo
 	);
-
-	return pElCurrentFunction;
 }
 
-ElementCommand* ifRightParenthesis(
-	RuntimeData* rt,
-	ElementCommand* pElCurrentFunction
+void utils_pop_cmd_and_exec(
+	RuntimeData* rt
+	//ElementCommand* pElCurrentFunction
 )
 {
+	ElementCommand* pElCurrentFunction =
+		ListCommandGetLast( rt->cmdStack );
 	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
 	t_int paramCount =
 		ListAtomGetSize ( rt -> stack )
@@ -543,7 +547,7 @@ ElementCommand* ifRightParenthesis(
 	)
 	{
 		// execute the function:
-		callFunction(
+		utils_call_function(
 				rt,
 				pFunctionInfo,
 				paramCount
@@ -557,18 +561,16 @@ ElementCommand* ifRightParenthesis(
 		post("ERROR: wrong number of parameters for function %s", buf);
 	}
 
-	//delete the function from Stack, becaus it has been executed:
+	//delete the function from Stack, because it has been executed:
 	ListCommandDel( rt -> cmdStack, pElCurrentFunction);
-	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
-	tryToExecuteImmediately(
+	utils_try_to_exec_immediately(
 			rt
 	);
-	pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
 	return pElCurrentFunction;
 }
 
-void ifValue(
-		RuntimeData* rt,
+void utils_push_value(
+	RuntimeData* rt,
 	t_atom* pCurrentToken
 )
 {
@@ -578,7 +580,7 @@ void ifValue(
 	ListAtomAdd( rt -> stack, pValue);
 }
 
-BOOL isValue(t_atom* pToken)
+BOOL utils_is_value(t_atom* pToken)
 {
 	if( atomEqualsString( pToken, "(" ) )
 		return FALSE;
@@ -586,7 +588,7 @@ BOOL isValue(t_atom* pToken)
 }
 
 // calls the function that is on the cmdStack
-void callFunction(
+void utils_call_function(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo,
 	t_int countParam
@@ -608,7 +610,7 @@ void callFunction(
 		ElementAtom* pElParam = ListAtomGetLast ( rt -> stack );
 		ListAtomDel( rt -> stack, pElParam );
 	}
-	DB_PRINT("callFunction called");
+	DB_PRINT("utils_call_function called");
 	// call command:
 	(pFunctionInfo -> pFunc) (
 			rt,
@@ -619,11 +621,12 @@ void callFunction(
 	freebytes( pArgs, sizeof(t_atom ) * countParam );
 }
 
-void tryToExecuteImmediately(
+void utils_try_to_exec_immediately(
 		RuntimeData* rt
 )
 {
-	ElementCommand* pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+	ElementCommand* pElCurrentFunction =
+		ListCommandGetLast ( rt -> cmdStack );
 	if( !pElCurrentFunction )
 		return ;
 	// if the topmost command is a dont-read-all-parameters-command:
@@ -638,7 +641,7 @@ void tryToExecuteImmediately(
 		;
 		if( paramCount== pFunctionInfo -> executeAfter )
 		{
-			callFunction(rt, pFunctionInfo, paramCount);
+			utils_call_function(rt, pFunctionInfo, paramCount);
 		}
 		else if( paramCount > pFunctionInfo -> executeAfter)
 		{
@@ -659,7 +662,6 @@ t_atom* lexer_getNextToken(
 {
 	t_atom* pRet = 0;
 	if( rt -> peek < TokenBuf_get_size( rt -> current_prog ) )
-	//if( rt -> peek < rt -> currentProgCount )
 	{
 		pRet = & TokenBuf_get_array( rt -> current_prog )[ rt -> peek ];
 		rt -> peek += 1;
