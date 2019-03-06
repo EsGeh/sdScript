@@ -119,6 +119,18 @@ INLINE TYPE* MAP##_get( \
 	if( bucketEl == NULL ) \
 		return NULL; \
 	return bucketEl->pData->value; \
+} \
+ \
+INLINE void MAP##_clear( \
+	MAP* map \
+) \
+{ \
+	for( int i=0; i< MAP##_Buckets_get_size( & map->buckets ); i++ ) \
+	{ \
+		MAP##_BucketClear( \
+			& MAP##_Buckets_get_array( & map->buckets )[i]  \
+		); \
+	} \
 }
 
 #endif

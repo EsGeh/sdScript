@@ -60,15 +60,15 @@ void script_obj_on_del_program(
 		t_script_obj* pThis,
 		t_symbol* s
 );
-void script_obj_on_exec(
-	t_script_obj* pThis,
-	t_symbol* prog_name,
-	int argc,
-	t_atom* argv
-);
 void script_obj_on_set_var(
 	t_script_obj* pThis,
 	t_symbol* s,
+	int argc,
+	t_atom* argv
+);
+void script_obj_on_exec(
+	t_script_obj* pThis,
+	t_symbol* prog_name,
 	int argc,
 	t_atom* argv
 );
@@ -76,22 +76,25 @@ void script_obj_on_set_var(
 // ****************************
 // low level execution control:
 // ****************************
-void script_obj_init_prog(
+
+// exec as subroutine:
+int script_obj_exec_sub_program(
 	t_script_obj* this,
 	t_symbol* prog_name
 );
 
-void script_obj_exit_prog(
-	t_script_obj* this
-);
-
 // executes the current code:
-void sgScriptObj_exec(
+void script_obj_exec_current(
 	t_script_obj* this
 );
 
 //*********************************************
 // utils:
+
+RuntimeData* script_obj_init_prog(
+	t_script_obj* this,
+	t_symbol* prog_name
+);
 
 void utils_push_cmd(
 	RuntimeData* rt,
@@ -109,7 +112,7 @@ void utils_push_value(
 
 BOOL utils_is_value(t_atom* pToken);
 
-// calls the function that is on the cmdStack
+// calls the function that is on the command_stack
 void utils_call_function(
 		RuntimeData* rt,
 		FunctionInfo* pFunctionInfo,
@@ -204,11 +207,13 @@ void* t_script_obj_init(
 	t_script_obj* x = (t_script_obj* )pd_new( script_class );
 
 	Programs_init( & x->programs, PROGRAMS_HASH_SIZE );
-	x -> pSymbolTable = SymbolTable_New();
+	x->symbol_table = symtab_init();
+	ProgStackInit( & x-> program_stack );
+	OutputBuf_init( & x->output_buffer );
 
 	x->clock = clock_new( 
 			x,
-			(t_method )sgScriptObj_exec
+			(t_method )script_obj_exec_current
 	);
 
 	x -> pOutlet = outlet_new( & x -> obj, &s_list);
@@ -229,6 +234,25 @@ void* t_script_obj_init(
 		);
 		*/
 	}
+	Scope_init(
+			& x -> global_scope,
+			VARS_HASH_SIZE
+	);
+	for( int i=0; i<argc; i++)
+	{
+
+		Atoms* new_var = getbytes( sizeof( Atoms ) );
+		Atoms_init( new_var );
+		t_atom new_atom;
+		SETFLOAT( & new_atom, 0 );
+		Atoms_append( new_var, new_atom );
+		Scope_insert(
+				&  x -> global_scope,
+				atom_getsymbol( & argv[i] ),
+				new_var
+		);
+	}
+	/*
 	for( int i=0; i<argc; i++)
 	{
 		Variable variable;
@@ -242,8 +266,8 @@ void* t_script_obj_init(
 		entry . symbol = argv[i];
 		entry . value = value;
 		SymbolTable_AddMainVar(x -> pSymbolTable, entry);
-
 	}
+	*/
 	return (void* )x;
 }
 
@@ -252,17 +276,17 @@ void t_script_obj_exit(
 )
 {
 
+	Scope_exit( & pThis -> global_scope );
+
 	if( pThis->clock)
 		clock_free( pThis -> clock );
 
-	if( pThis->rt )
-	{
-		script_obj_exit_prog( pThis );
-	}
-
 	DB_PRINT("removing sgScript object...");
+	ProgStackExit( & pThis-> program_stack );
 	Programs_exit( & pThis->programs );
-	SymbolTable_Free( pThis -> pSymbolTable );
+	symtab_exit( pThis -> symbol_table );
+
+	OutputBuf_exit( & pThis -> output_buffer );
 }
 
 void sdScript_output(
@@ -355,6 +379,36 @@ void script_obj_on_del_program(
 	);
 }
 
+void script_obj_on_set_var(
+	t_script_obj* pThis,
+	t_symbol* s,
+	int argc,
+	t_atom* argv
+)
+{
+	DB_PRINT("script_obj_on_set_var");
+	if( argc < 1 )
+	{
+		pd_error( pThis, "wrong syntax: expected 'set <global_var> val1 ...'" );
+		return;
+	}
+
+	t_symbol* var_name = atom_getsymbol( & argv[0] );
+	Atoms* value = Scope_get(
+			& pThis -> global_scope,
+			var_name
+	);
+	Atoms_set_size(
+			value,
+			argc-1
+	);
+	memcpy(
+			Atoms_get_array( value ),
+			& argv[1],
+			sizeof( t_atom ) * (argc-1)
+	);
+}
+
 void script_obj_on_exec(
 	t_script_obj* pThis,
 	t_symbol* prog_name,
@@ -371,69 +425,25 @@ void script_obj_on_exec(
 	}
 	// if some program is still loaded, clean it up:
 	if(
-			pThis -> rt
+			ProgStackGetSize( & pThis -> program_stack )
 	)
 	{
-		script_obj_exit_prog( pThis );
+		ProgStackClear( & pThis -> program_stack );
+		// TODO: stop all clocks!
 	}
 
-	script_obj_init_prog(
+	int sub_prog_ret = script_obj_exec_sub_program(
 			pThis,
 			prog_name
 	);
-	if(
-			! pThis->rt
-	)
+	if( sub_prog_ret != 0)
 	{
 		t_atom a_prog_name;
 		SETSYMBOL( & a_prog_name, prog_name );
 		char buffer[256];
 		atom_string( & a_prog_name, buffer, 255 );
 		pd_error( pThis, "sdScript: no such comand or program: '%s'", buffer );
-		return;
 	}
-	sgScriptObj_exec(
-			pThis
-	);
-	if(
-		pThis->rt->delay
-	)
-	{
-		clock_delay( pThis->clock, pThis->rt->delay );
-	}
-	else
-	{
-		script_obj_exit_prog( pThis );
-	}
-}
-
-void script_obj_on_set_var(
-	t_script_obj* pThis,
-	t_symbol* s,
-	int argc,
-	t_atom* argv
-)
-{
-	DB_PRINT("script_obj_on_set_var");
-
-	// __INTERN_SET Set ( <var> ... )
-	t_int prog_count = argc+4;
-	t_atom* prog = getbytes( sizeof(t_atom)* prog_count );
-	SETSYMBOL( &prog[0], gensym("__INTERN_SET"));
-	SETSYMBOL( &prog[1], gensym("Set"));
-	SETSYMBOL( &prog[2], atom_getsymbol(&leftParenthesis));
-	prog[3] = argv[0];
-	memcpy( &prog[4], &argv[1], sizeof(t_atom)*(argc-1));
-	SETSYMBOL( &prog[4+argc-1], atom_getsymbol(&rightParenthesis));
-
-	script_obj_on_set_program(
-			pThis,
-			&s_list,
-			prog_count,
-			prog
-	);
-	script_obj_on_exec( pThis, gensym("__INTERN_SET"), 0, NULL );
-	freebytes( prog, sizeof(t_atom) * prog_count );
 }
 
 
@@ -441,11 +451,82 @@ void script_obj_on_set_var(
 // low level execution control:
 // ****************************
 
-void script_obj_init_prog(
+// exec as subroutine:
+int script_obj_exec_sub_program(
 	t_script_obj* this,
 	t_symbol* prog_name
 )
 {
+
+	RuntimeData* rt = script_obj_init_prog(
+			this,
+			prog_name
+	);
+	if(
+			!rt
+	)
+	{
+		return -1; 
+	}
+	script_obj_exec_current(
+			this
+	);
+	// if the the sub program set itself asleep:
+	if(
+		rt->delay
+	)
+	{
+		// start a timer to continue execution:
+		clock_delay( this->clock, rt->delay );
+	}
+	return 0;
+}
+
+RuntimeData* script_obj_init_prog(
+	t_script_obj* this,
+	t_symbol* prog_name
+)
+{
+	TokenBuf* prog = Programs_get(
+			& this -> programs,
+			prog_name
+	);
+	if( !prog )
+	{
+		return NULL;
+	}
+
+	RuntimeData* rt = getbytes( sizeof( RuntimeData ) );
+
+	ListAtomInit( & rt -> stack );
+	ListCommandInit( & rt -> command_stack  );
+	Scope* scope =
+		symtab_add_scope(
+				this -> symbol_table,
+				prog_name
+		);
+
+	(*rt) = (RuntimeData) {
+		.current_prog_name = prog_name,
+		.current_prog = prog,
+		.scope = scope,
+		.global_scope = & this->global_scope,
+		.peek = 0,
+
+		.countParenthesisRightIgnore = 1,
+		.escape = FALSE,
+		.skipMode = FALSE,
+		.delay = 0,
+
+		.script_obj = this
+	};
+	ProgStackAdd(
+			& this->program_stack,
+			rt
+	);
+	return rt;
+
+	/*
 	TokenBuf* prog = Programs_get(
 			& this -> programs,
 			prog_name
@@ -469,7 +550,7 @@ void script_obj_init_prog(
 		.current_prog = prog,
 		.pSymbolTable = this-> pSymbolTable,
 		.stack = stack,
-		.cmdStack = cmd_stack,
+		.command_stack = cmd_stack,
 		.peek = 0,
 		.outputBuffer = output_buffer,
 		.script_obj = this,
@@ -481,34 +562,19 @@ void script_obj_init_prog(
 	};
 	SymbolTable_Clear( rt -> pSymbolTable );
 	this->rt = rt;
-}
-
-
-void script_obj_exit_prog(
-	t_script_obj* this
-)
-{
-	RuntimeData* rt = this->rt;
-
-	OutputBuf_exit( rt -> outputBuffer );
-	ListAtomExit(  rt -> stack );
-	ListCommandExit( rt -> cmdStack );
-
-	freebytes( rt->stack, sizeof( ListAtom ) );
-	freebytes( rt->cmdStack, sizeof( ListCommand ) );
-	freebytes( rt->outputBuffer, sizeof( OutputBuf ) );
-	freebytes( rt, sizeof( RuntimeData ) );
-
-	this->rt = NULL;
+	*/
 }
 
 // executes the current code:
-void sgScriptObj_exec(
+void script_obj_exec_current(
 	t_script_obj* this
 )
 {
+	ProgStackEl* last_prog_el = ProgStackGetLast(
+			& this-> program_stack
+	);
+	RuntimeData* rt = last_prog_el -> pData;
 
-	RuntimeData* rt = this->rt;
 	rt -> delay = 0;
 
 	t_atom* pCurrentToken=NULL;
@@ -563,7 +629,7 @@ void sgScriptObj_exec(
 						rt->countParenthesisRightIgnore = 1;
 					}
 				}
-				else if ( ListCommandGetSize( rt->cmdStack ) )
+				else if( ListCommandGetSize( & rt->command_stack ) )
 				{
 					utils_pop_cmd_and_exec( rt );
 				}
@@ -596,6 +662,13 @@ void sgScriptObj_exec(
 			}
 		}
 	}
+	if( ! rt -> delay )
+	{
+		ProgStackDel(
+				& this -> program_stack,
+				last_prog_el
+		);
+	}
 }
 
 //*********************************************
@@ -611,10 +684,10 @@ void utils_push_cmd(
 	// add the function to the command stack:
 	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
 	pCurrentCommandInfo -> stackHeight0 =
-		ListAtomGetSize ( rt -> stack );
+		ListAtomGetSize ( & rt -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
 	ListCommandAdd (
-			rt->cmdStack,
+			& rt->command_stack,
 			pCurrentCommandInfo
 	);
 }
@@ -625,10 +698,10 @@ void utils_pop_cmd_and_exec(
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast( rt->cmdStack );
+		ListCommandGetLast( & rt->command_stack );
 	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
 	t_int paramCount =
-		ListAtomGetSize ( rt -> stack )
+		ListAtomGetSize ( & rt -> stack )
 		- pElCurrentFunction -> pData -> stackHeight0
 	;
 	if(
@@ -642,7 +715,7 @@ void utils_pop_cmd_and_exec(
 				pFunctionInfo,
 				paramCount
 		);
-		pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+		pElCurrentFunction = ListCommandGetLast ( & rt -> command_stack );
 	}
 	else
 	{
@@ -652,7 +725,7 @@ void utils_pop_cmd_and_exec(
 	}
 
 	//delete the function from Stack, because it has been executed:
-	ListCommandDel( rt -> cmdStack, pElCurrentFunction);
+	ListCommandDel( & rt -> command_stack, pElCurrentFunction);
 	utils_try_to_exec_immediately(
 			rt
 	);
@@ -666,7 +739,7 @@ void utils_push_value(
 	// put value on stack:
 	t_atom* pValue = getbytes(sizeof(t_atom));
 	*pValue = *pCurrentToken;
-	ListAtomAdd( rt -> stack, pValue);
+	ListAtomAdd( & rt -> stack, pValue);
 }
 
 BOOL utils_is_value(t_atom* pToken)
@@ -676,7 +749,7 @@ BOOL utils_is_value(t_atom* pToken)
 	return TRUE;
 }
 
-// calls the function that is on the cmdStack
+// calls the function that is on the command_stack
 void utils_call_function(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo,
@@ -686,18 +759,18 @@ void utils_call_function(
 	// first copy params:
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
-		ElementAtom* pElOpNext = ListAtomGetLast( rt -> stack);
+		ElementAtom* pElOpNext = ListAtomGetLast( & rt -> stack);
 		for ( int i=countParam-1; i>=0; i--)
 		{
 			pArgs[i] = *(pElOpNext-> pData);
-			pElOpNext = ListAtomGetPrev( rt -> stack, pElOpNext);
+			pElOpNext = ListAtomGetPrev( & rt -> stack, pElOpNext);
 		}
 	}
 	// ... delete them from stack
 	for ( int i=0; i<countParam; i++)
 	{
-		ElementAtom* pElParam = ListAtomGetLast ( rt -> stack );
-		ListAtomDel( rt -> stack, pElParam );
+		ElementAtom* pElParam = ListAtomGetLast ( & rt -> stack );
+		ListAtomDel( & rt -> stack, pElParam );
 	}
 	DB_PRINT("utils_call_function called");
 	// call command:
@@ -715,7 +788,7 @@ void utils_try_to_exec_immediately(
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast ( rt -> cmdStack );
+		ListCommandGetLast ( & rt -> command_stack );
 	if( !pElCurrentFunction )
 		return ;
 	// if the topmost command is a dont-read-all-parameters-command:
@@ -725,7 +798,7 @@ void utils_try_to_exec_immediately(
 		FunctionInfo* pFunctionInfo = pElCurrentFunction->pData -> pFunctionInfo;
 		// check if there are enough values on stack now to call the next function
 		t_int paramCount =
-			ListAtomGetSize ( rt -> stack )
+			ListAtomGetSize ( & rt -> stack )
 			- pElCurrentFunction -> pData -> stackHeight0
 		;
 		if( paramCount== pFunctionInfo -> executeAfter )
@@ -738,7 +811,7 @@ void utils_try_to_exec_immediately(
 			atom_string(& pFunctionInfo->name, buf, 256);
 			post("ERROR: wrong number of parameters for %s", buf);
 		}
-		ListCommandDel( rt -> cmdStack, pElCurrentFunction);
+		ListCommandDel( & rt -> command_stack, pElCurrentFunction);
 	}
 }
 
