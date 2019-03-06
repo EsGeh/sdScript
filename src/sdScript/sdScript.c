@@ -525,23 +525,22 @@ void sgScriptObj_exec(
 		// 1. switch escape mode on/off:
 		if( compareAtoms(pCurrentToken, &escapeBegin) )
 		{
-			rt->escape = TRUE;
+			rt -> escape = TRUE;
 		}
 		else if( compareAtoms(pCurrentToken, &escapeEnd) )
 		{
-			if (rt->escape == FALSE)
+			if ( rt->escape == FALSE)
 				post("ERROR: #] found, without corresponding #[!");
 			rt->escape = FALSE;
 		}
-
-		else if( ! rt->escape)
+		else if( ! rt->escape )
 		{
 			FunctionInfo* pFunctionInfo = getFunctionInfo( pCurrentToken );
 			// <Command>
 			if( pFunctionInfo )
 			{
 				if( ! rt -> skipMode )
-					utils_push_cmd(rt,pFunctionInfo);	
+					utils_push_cmd( rt, pFunctionInfo);	
 				// eat the "(" that follows:
 				if( ! lexer_consumeNextToken(rt, & leftParenthesis) )
 				{
@@ -549,18 +548,18 @@ void sgScriptObj_exec(
 					post("ERROR: '(' expected, after ...");
 				}
 				else if( rt->skipMode )
-					(rt->countParenthesisRightIgnore) ++;
+					(rt -> countParenthesisRightIgnore) ++;
 			}
 			// ')'
-			else if( compareAtoms(pCurrentToken,&rightParenthesis) )
+			else if ( compareAtoms(pCurrentToken,&rightParenthesis) )
 			{
 				if( rt->skipMode )
 				{
-					rt->countParenthesisRightIgnore --;
-					if( rt->countParenthesisRightIgnore == 0 )
+					rt -> countParenthesisRightIgnore --;
+					if( rt -> countParenthesisRightIgnore == 0 )
 					{
 						rt -> skipMode = FALSE;
-						rt->countParenthesisRightIgnore = 1;
+						rt -> countParenthesisRightIgnore = 1;
 					}
 				}
 				else if ( ListCommandGetSize( rt->cmdStack ) )
@@ -570,20 +569,21 @@ void sgScriptObj_exec(
 				else
 					post("ERROR: ')' found, but no corresponding 'func ('");
 			}
-			else if( rt->skipMode )
-			{
-				// just skip
-			}
 			// <value>
-			else if (utils_is_value(pCurrentToken))
+			else if( ! rt->skipMode )
 			{
-				utils_push_value(rt,pCurrentToken);
+				// if in escape mode, everything is considered a value:
+				if (utils_is_value(pCurrentToken))
+				{
+					DB_PRINT("is a value");
+					utils_push_value(rt,pCurrentToken);
+				}
+				else
+				{
+					post("ERROR: token is neither function, var, or procedure: '%s'",buf);
+				}
+				utils_try_to_exec_immediately(rt);
 			}
-			else
-			{
-				post("ERROR: token is neither function, var, or procedure: '%s'",buf);
-			}
-			utils_try_to_exec_immediately(rt);
 		}
 		else // we are in escape mode:
 		{
