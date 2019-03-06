@@ -7,11 +7,6 @@
 #include <stdlib.h>
 
 
-/*
-#define FUNCTION_COUNT 54
-FunctionInfo listFunctionInfo[FUNCTION_COUNT];
-*/
-
 DECL_DYN_ARRAY(FunctionInfos, FunctionInfo)
 DEF_DYN_ARRAY(FunctionInfos, FunctionInfo)
 
@@ -491,50 +486,17 @@ PFUNCTION_HEADER( addMainVar )
 			atom_getsymbol( &pArgs[0] ),
 			new_var
 	);
-
-	/*
-	//post("addMainVar");
-	if( countArgs == 0 )
-	{
-		post("WARNING: addMainVar with zero parameters called!");
-		return;
-	}
-	else if( countArgs == 1 )
-	{
-		post("WARNING: addMainVar with one parameters called!");
-		return;
-	}
-	Variable variable;
-	variable . count = countArgs - 1;
-	variable . values = getbytes( sizeof(t_atom)* (countArgs-1) );
-	for( int i=0; i<(countArgs-1); i++ )
-	{
-		variable . values[i] = pArgs[i+1];
-	}
-	STValue value;
-	value . type = VALUE;
-	value . variable = variable;
-	STEntry entry;
-	entry . symbol = pArgs[0];
-	entry . value = value;
-	SymbolTable_AddMainVar(rt -> pSymbolTable, entry);
-	*/
 }
+
 PFUNCTION_HEADER( clearMain )
 {
 	Scope_clear(
 			rt -> global_scope
 	);
-	/*
-	//post("clearMain");
-	SymbolTable_Exit( rt -> pSymbolTable );
-	SymbolTable_Init( rt -> pSymbolTable );
-	*/
 }
 
 PFUNCTION_HEADER( if_ )
 {
-	//post("if_ called!!");
 	if( atom_getfloat(& pArgs[0]) )
 	{
 		CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
@@ -702,7 +664,6 @@ PFUNCTION_HEADER( setOp )
 		t_atom* pCurrent = & pArgs[i];
 		if( afterOp == FALSE )
 		{
-			//if( atom_getsymbol( pCurrent ) == gensym("union") )
 			if( atomEqualsString( pCurrent, "union" ) )
 			{
 				op = UNION;
@@ -738,9 +699,6 @@ PFUNCTION_HEADER( setOp )
 					pElToDelete = ListAtomGetElement( &listReturn, pCurrent, AtomListCompareAtoms);
 					if( pElToDelete )
 					{
-						/*t_atom* pAdd = getbytes(sizeof(t_atom));
-						(* pAdd) = * pCurrent;
-						ListAtomAdd( & listReturn, pAdd );*/
 						ListAtomDel( & listReturn, pElToDelete );
 					}
 				break;
@@ -750,9 +708,6 @@ PFUNCTION_HEADER( setOp )
 	ElementAtom* pCurrent = ListAtomGetFirst( & listReturn );
 	while ( pCurrent )
 	{
-		/*char buf[256];
-		atom_string( pCurrent->pData, buf, 256);
-		post("current: %s", buf);*/
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = (* pCurrent -> pData);
 		ListAtomAdd( & rt -> stack, pResult);
@@ -841,9 +796,6 @@ PFUNCTION_HEADER( calcTransp )
 	ElementAtom* pCurrent = ListAtomGetFirst( & listReturn );
 	while ( pCurrent )
 	{
-		/*char buf[256];
-		atom_string( pCurrent->pData, buf, 256);
-		post("current: %s", buf);*/
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = (* pCurrent -> pData);
 		ListAtomAdd( & rt -> stack, pResult);
@@ -925,10 +877,6 @@ PFUNCTION_HEADER( modA )
 		post("ERROR: modA called with no parameters!");
 		return;
 	}
-	/*t_float m = atom_getfloat( & pArgs[0] );
-	t_atom* pResult = getbytes(sizeof(t_atom));
-	SETFLOAT( pResult, a  b );
-	ListAtomAdd( & rt -> stack, pResult)*/
 	t_atom m = pArgs[0] ;
 	for( int i=1; i<countArgs; i++)
 	{
@@ -1059,12 +1007,7 @@ PFUNCTION_HEADER( dec )
 
 PFUNCTION_HEADER( rndIntUnequal )
 {
-	/*t_int min = atom_getfloat( & pArgs[0] );
-	t_int max = atom_getfloat( & pArgs[1] );*/
-	//t_int countRange = max - min + 1;
 	t_int count = countArgs;
-	/*if( (countArgs - 2) != (countRange) )
-		post( "WARNING: rndIntUnequal range contains an amount of values unequal than the cardinality of the list following!");*/
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, -1 ); // (set a default value)
 	t_float rand_ = (rand() % 1000000) / 1000000.0; 
@@ -1078,7 +1021,6 @@ PFUNCTION_HEADER( rndIntUnequal )
 			break;
 		}
 	}
-	//SETFLOAT( pResult, min + (rand() % (max - min + 1) ) );
 	ListAtomAdd( & rt -> stack, pResult);
 }
 
@@ -1086,21 +1028,18 @@ PFUNCTION_HEADER( rndIntUnequal )
 PFUNCTION_HEADER(sgpackType)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
-	//SETSYMBOL(pResult, atom_getsymbol(& pArgs[0]));
 	(*pResult) = pArgs[0];
 	ListAtomAdd( & rt->stack, pResult);
 }
 PFUNCTION_HEADER(sgpackCount)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
-	//SETFLOAT(pResult, atom_getfloat(& pArgs[1]));
 	(*pResult) = pArgs[1];
 	ListAtomAdd( & rt->stack, pResult);
 }
 PFUNCTION_HEADER(sgpackParams)
 {
 	t_int count = atom_getfloat( & pArgs[1]);
-	// SETSYMBOL(pResult, atom_getsymbol(pArgs[0]));
 	for( int i=0; i<count; i++)
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
@@ -1111,9 +1050,7 @@ PFUNCTION_HEADER(sgpackParams)
 
 PFUNCTION_HEADER( sgPackFromHuman )
 {
-	//t_int index = 0;
 	ListAtomPointer stackSizeInfo; // a stack of the atoms with the current packs size
-	//t_int index = 0; // index in the list being parsed
 	t_int indexNew = 0; // index in the return values
 	ListAtomPointerInit( &stackSizeInfo );
 	for( int index=0; index < countArgs; index++ )
@@ -1121,7 +1058,6 @@ PFUNCTION_HEADER( sgPackFromHuman )
 		t_atom* pCurrent = & pArgs[index];
 		if( atom_getsymbol(pCurrent) == gensym("(") )
 		{
-			//post("[");
 			t_atom* pAtom = getbytes( sizeof(t_atom));
 			SETFLOAT(pAtom, indexNew);
 			ListAtomAdd( & rt->stack, pAtom);
@@ -1131,7 +1067,6 @@ PFUNCTION_HEADER( sgPackFromHuman )
 		}
 		else if( atom_getsymbol(pCurrent) == gensym(")") )
 		{
-			//post("]");
 			if( ListAtomPointerGetSize( &stackSizeInfo ) > 0 )
 			{
 				ElementAtomPointer* pEl = ListAtomPointerGetLast(&stackSizeInfo);
@@ -1149,7 +1084,6 @@ PFUNCTION_HEADER( sgPackFromHuman )
 			(*pAtom) = pArgs[index] ;
 			ListAtomAdd( & rt->stack, pAtom);
 			indexNew ++;
-			//t_int count = pArgs[index];
 		}
 	}
 	if( ListAtomPointerGetSize( &stackSizeInfo ) > 0 )
@@ -1207,7 +1141,6 @@ PFUNCTION_HEADER( sgDataGetPackFromIndex )
 	t_int pos = 1;
 	while( pos < countArgs )
 	{
-		//t_atom* pCurrentType = & pArgs[pos];
 		t_int count = atom_getfloat(& pArgs[pos+1]);
 		if( indexCurrent == index )
 		{
@@ -1225,11 +1158,8 @@ PFUNCTION_HEADER( sgDataGetPackFromIndex )
 // returns the first sgPack
 PFUNCTION_HEADER( sgDataGetFirst )
 {
-	//t_int index = atom_getint(&pArgs[0]);
-	//t_int indexCurrent = 0;
 	t_int pos = 0;
 	
-	//t_atom* pCurrentType = & pArgs[pos];
 	t_int count = atom_getfloat(& pArgs[pos+1]);
 	for( int i=pos; i<pos+2+count; i++ )
 	{
@@ -1242,11 +1172,8 @@ PFUNCTION_HEADER( sgDataGetFirst )
 
 PFUNCTION_HEADER( sgDataGetRest )
 {
-	//t_int index = atom_getint(&pArgs[0]);
-	//t_int indexCurrent = 0;
 	t_int pos = 0;
 	
-	//t_atom* pCurrentType = & pArgs[pos];
 	t_int count = atom_getfloat(& pArgs[pos+1]);
 	for( int i=pos; i<pos+2+count; i++ )
 	{
@@ -1260,19 +1187,6 @@ PFUNCTION_HEADER( sgDataGetRest )
 		(*pAtom) = pArgs[pos] ;
 		ListAtomAdd( & rt->stack, pAtom);
 	}
-	/*while( pos < countArgs )
-	{
-		//t_atom* pCurrentType = & pArgs[pos];
-		t_int count = atom_getfloat(& pArgs[pos+1]);
-		for( int i=pos; i<pos+2+count; i++ )
-		{
-			t_atom* pAtom = getbytes( sizeof(t_atom));
-			(*pAtom) = pArgs[i] ;
-			ListAtomAdd( & rt->stack, pAtom);
-		}
-		pos += (2 + count);
-		//indexCurrent ++;
-	}*/
 }
 
 PFUNCTION_HEADER( delay )
