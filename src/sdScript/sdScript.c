@@ -77,12 +77,6 @@ void script_obj_on_exec(
 // low level execution control:
 // ****************************
 
-// exec as subroutine:
-int script_obj_exec_sub_program(
-	t_script_obj* this,
-	t_symbol* prog_name
-);
-
 // executes the current code:
 void script_obj_exec_current(
 	t_script_obj* this

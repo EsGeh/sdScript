@@ -102,10 +102,11 @@ PFUNCTION_HEADER( sgDataGetFirst );
 PFUNCTION_HEADER( sgDataGetRest );
 // deletes first pack from a list of sgPacks and returns it
 
-
 PFUNCTION_HEADER( delay );
 // deletes first pack from a list of sgPacks and returns it
 
+// call an other function as sub routine:
+PFUNCTION_HEADER( callFunction );
 
 #define ADD_FUNCTION( NAME,PFUNC,PARAMCOUNT,EXECAFTER) \
 { \
@@ -192,6 +193,7 @@ void functions_init()
 	ADD_FUNCTION("sgDataGetFirst",&sgDataGetFirst,-1,-1);
 	ADD_FUNCTION("sgDataGetRest",&sgDataGetRest,-1,-1);
 	ADD_FUNCTION("Delay", &delay, 1, -1 );
+	ADD_FUNCTION("Call", &callFunction, 1, -1);
 
 	t_atom atom_temp;
 	SETSYMBOL( &atom_temp, gensym( "NOP" ) );
@@ -1277,4 +1279,16 @@ PFUNCTION_HEADER( delay )
 {
 	rt->delay =
 		atom_getint( & pArgs[0] );
+}
+
+PFUNCTION_HEADER( callFunction )
+{
+	int ret = script_obj_exec_sub_program(
+			rt -> script_obj,
+			atom_getsymbol( & pArgs[0] )
+	);
+	if( ret == -1 )
+	{
+		pd_error( rt->script_obj, "no such program!" );
+	}
 }

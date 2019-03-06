@@ -106,6 +106,11 @@ INLINE void DEL_RT(RuntimeData* rt, int size)
 
 DEF_LIST( ProgStack, ProgStackEl, RuntimeData, getbytes, freebytes, DEL_RT );
 
+int script_obj_exec_sub_program(
+	t_script_obj* this,
+	t_symbol* prog_name
+);
+
 void sdScript_output(
 	t_script_obj* pThis,
 	int argc,
