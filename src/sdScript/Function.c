@@ -1191,18 +1191,12 @@ PFUNCTION_HEADER( sgDataGetRest )
 
 PFUNCTION_HEADER( delay )
 {
-	rt->delay =
+	rt -> script_obj -> delay =
 		atom_getint( & pArgs[0] );
 }
 
 PFUNCTION_HEADER( callFunction )
 {
-	int ret = script_obj_exec_sub_program(
-			rt -> script_obj,
-			atom_getsymbol( & pArgs[0] )
-	);
-	if( ret == -1 )
-	{
-		pd_error( rt->script_obj, "no such program!" );
-	}
+	rt -> script_obj -> jump_to_program =
+			atom_getsymbol( & pArgs[0] );
 }

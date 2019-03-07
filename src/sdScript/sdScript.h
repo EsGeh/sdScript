@@ -59,8 +59,6 @@ typedef struct SRuntimeData {
 	BOOL escape;
 	// skip mode (default FALSE):
 	BOOL skipMode;
-	// if != 0: wait before next cmd:
-	double delay;
 
 	t_script_obj* script_obj;
 } RuntimeData;
@@ -83,7 +81,18 @@ struct _script_obj {
 
 	// while running: stores the execution state
 	ProgStack program_stack;
-	//RuntimeData* rt;
+
+	/* programs can set this variable
+	 * in order to pause themself
+	 * for a number of ms
+	 */
+	double delay;
+
+	/* programs can set this variable
+	 * in order to jump into another
+	 * program:
+	 */
+	t_symbol* jump_to_program;
 
 	// output buffer:
 	OutputBuf output_buffer;
@@ -105,11 +114,6 @@ INLINE void DEL_RT(RuntimeData* rt, int size)
 }
 
 DEF_LIST( ProgStack, ProgStackEl, RuntimeData, getbytes, freebytes, DEL_RT );
-
-int script_obj_exec_sub_program(
-	t_script_obj* this,
-	t_symbol* prog_name
-);
 
 void sdScript_output(
 	t_script_obj* pThis,

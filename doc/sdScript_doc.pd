@@ -2,7 +2,7 @@
 #X obj 277 262 print OUT;
 #X obj 285 185 r \$0-execScript;
 #X obj 285 208 t b l;
-#N canvas 0 30 1598 543 basic 0;
+#N canvas 0 30 1598 490 basic 0;
 #X obj 70 331 outlet;
 #X text 276 192 test basic syntax;
 #X msg 134 98 list Print ( Add ( 2 3 ) ) Out ( );
@@ -45,8 +45,8 @@ Out ( );
 #X connect 2 0 8 0;
 #X connect 4 0 8 0;
 #X connect 6 0 8 0;
-#X restore 649 141 pd Variables;
-#N canvas 0 30 990 854 Sets 0;
+#X restore 649 185 pd Variables;
+#N canvas 0 30 1598 490 Sets 0;
 #X msg 445 319 list Var ( set SetOp ( 1 2 3 union 1 8 9 ) ) Print (
 set Get ( set ) ) Print ( contains? Contains ( 100 Get ( set ) ) )
 Out ( );
@@ -73,7 +73,7 @@ values \, so that "s disjoint t == empty set" is true;
 #X connect 5 0 10 0;
 #X connect 6 0 10 0;
 #X connect 8 0 10 0;
-#X restore 648 194 pd Sets;
+#X restore 648 238 pd Sets;
 #N canvas 0 30 990 854 conditional 0;
 #X text 41 33 test conditionality;
 #X msg 42 51 list If ( Add ( 0 1 ) Print ( execute ) ) If ( Sub ( 3
@@ -88,7 +88,7 @@ values \, so that "s disjoint t == empty set" is true;
 #X connect 2 0 6 0;
 #X connect 3 0 6 0;
 #X connect 4 0 6 0;
-#X restore 647 81 pd conditional;
+#X restore 647 125 pd conditional;
 #N canvas 0 30 990 854 Random 0;
 #X msg 324 124 list Print ( RndI ( 1 6 ) ) Out ( );
 #X msg 39 50 list Print ( Rnd ( -1 1 ) ) Out ( );
@@ -149,26 +149,18 @@ Get ( event ) ) ) Out ( );
 #X connect 23 0 17 0;
 #X connect 24 0 18 0;
 #X restore 782 83 pd sgPack \, sgData;
-#X obj 647 103 s \$0-execScript;
-#X msg 986 137 list Print ( ModA ( 12 sgScale ( 6 1 1 0 ) ) ) Out (
-) \, bang;
-#X msg 987 162 list Print ( AddA ( 12 13 14 ) ) Out ( ) \, bang;
-#X obj 649 164 s \$0-execScript;
+#X obj 647 147 s \$0-execScript;
+#X obj 649 208 s \$0-execScript;
 #X obj 79 26 sdScript METAVAR1 METAVAR2;
-#X text 937 82 AddA ( a b1 b2 ... ) calculates (a+b1) (a+b2) ...;
-#X text 959 106 (analogeous for MulA \, ... );
-#X obj 648 217 s \$0-execScript;
-#X obj 649 340 s \$0-execScript;
-#X text 632 266 sgScale: a scale with linearly increasing intervals
+#X obj 648 261 s \$0-execScript;
+#X obj 653 400 s \$0-execScript;
+#X text 636 326 sgScale: a scale with linearly increasing intervals
 ;
-#X msg 649 316 list Print ( sgScale ( 6 2 1 11 ) ) Out ( );
-#X text 646 286 arguments: elCount \, stepAdd \, step0 \, startVal
+#X msg 653 376 list Print ( sgScale ( 6 2 1 11 ) ) Out ( );
+#X text 650 346 arguments: elCount \, stepAdd \, step0 \, startVal
 ;
 #X obj 778 41 s \$0-execScript;
 #X obj 276 239 sdScript;
-#X obj 1151 191 t b l;
-#X obj 1157 256 sdScript;
-#X obj 1157 279 print;
 #X text 129 62 (TODO);
 #X text 102 45 docu:;
 #X obj 788 160 s \$0-execScript;
@@ -220,11 +212,11 @@ program \, which can be also done explicitely;
 #X text 62 655 execute the "bang" program;
 #X msg 289 683 list Print ( start ) Out ( ) Delay ( 1000 ) Call ( bang
 );
-#X msg 426 739 list;
-#X text 460 741 sending another (e.g. empty) program stops all programs
-;
 #X text 55 593 a program can allso call itself \, which is called "recursion".
 This way we can repeat an action (possibly endless);
+#X msg 425 784 list;
+#X text 423 751 sending another (e.g. empty) program stops all programs
+(including delays);
 #X connect 0 0 5 0;
 #X connect 1 0 0 0;
 #X connect 4 0 5 1;
@@ -243,21 +235,29 @@ This way we can repeat an action (possibly endless);
 #X connect 29 0 30 0;
 #X connect 30 0 26 0;
 #X connect 32 0 29 0;
-#X connect 33 0 29 0;
-#X restore 206 395 pd multiple programs;
+#X connect 34 0 29 0;
+#X restore 119 394 pd multiple programs;
+#X obj 650 96 s \$0-execScript;
+#N canvas 0 30 1598 490 array 0;
+#X obj 88 298 outlet;
+#X msg 95 119 list Print ( ModA ( 12 sgScale ( 6 1 1 0 ) ) ) Out (
+) \, bang;
+#X msg 96 144 list Print ( AddA ( 12 13 14 ) ) Out ( ) \, bang;
+#X text 46 64 AddA ( a b1 b2 ... ) calculates (a+b1) (a+b2) ...;
+#X text 68 88 (analogeous for MulA \, ... );
+#X connect 1 0 0 0;
+#X connect 2 0 0 0;
+#X restore 650 73 pd array arithmetic;
+#X text 88 369 multiple programs \, recursion \, ...:;
 #X connect 1 0 2 0;
-#X connect 2 0 23 0;
-#X connect 2 1 23 1;
+#X connect 2 0 19 0;
+#X connect 2 1 19 1;
 #X connect 3 0 4 0;
-#X connect 5 0 13 0;
-#X connect 6 0 17 0;
+#X connect 5 0 11 0;
+#X connect 6 0 13 0;
 #X connect 7 0 10 0;
-#X connect 8 0 22 0;
-#X connect 11 0 24 0;
-#X connect 12 0 24 0;
-#X connect 20 0 18 0;
-#X connect 23 0 0 0;
-#X connect 24 0 25 0;
-#X connect 24 1 25 1;
-#X connect 25 0 26 0;
-#X connect 30 0 29 0;
+#X connect 8 0 18 0;
+#X connect 16 0 14 0;
+#X connect 19 0 0 0;
+#X connect 23 0 22 0;
+#X connect 26 0 25 0;
