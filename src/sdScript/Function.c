@@ -64,7 +64,7 @@ PFUNCTION_HEADER(mulA);
 PFUNCTION_HEADER(divA);
 PFUNCTION_HEADER(modA);
 // random
-PFUNCTION_HEADER(sgMinMax);
+PFUNCTION_HEADER(sdMinMax);
 PFUNCTION_HEADER(random_);
 
 // just throw away all parameters:
@@ -76,29 +76,29 @@ PFUNCTION_HEADER(inc);
 PFUNCTION_HEADER(dec);
 PFUNCTION_HEADER(rndIntUnequal);
 
-//sgPack:
-PFUNCTION_HEADER( sgpackType );
-PFUNCTION_HEADER( sgpackCount );
-PFUNCTION_HEADER( sgpackParams );
+//sdPack:
+PFUNCTION_HEADER( sdpackType );
+PFUNCTION_HEADER( sdpackCount );
+PFUNCTION_HEADER( sdpackParams );
 
-// like the abstraction it converts one OR MANY sgPacks
+// like the abstraction it converts one OR MANY sdPacks
 // from the "humane" syntax using "(" and ")" to the 
 // inhumane one, example:
 // pack ( bli bla blubb ) becomes: pack 3 bli bla blubb
-PFUNCTION_HEADER( sgPackFromHuman );
+PFUNCTION_HEADER( sdPackFromHuman );
 
-// sgData (lists of sgPacks):
-PFUNCTION_HEADER( sgDataGetPackFromType );
-PFUNCTION_HEADER( sgDataGetPackFromTypeRest );
-PFUNCTION_HEADER( sgDataGetPackFromIndex );
-// returns the first sgPack
-PFUNCTION_HEADER( sgDataGetFirst );
-// returns all sgPacks but the first sgPack
-PFUNCTION_HEADER( sgDataGetRest );
-// deletes first pack from a list of sgPacks and returns it
+// sdData (lists of sdPacks):
+PFUNCTION_HEADER( sdDataGetPackFromType );
+PFUNCTION_HEADER( sdDataGetPackFromTypeRest );
+PFUNCTION_HEADER( sdDataGetPackFromIndex );
+// returns the first sdPack
+PFUNCTION_HEADER( sdDataGetFirst );
+// returns all sdPacks but the first sdPack
+PFUNCTION_HEADER( sdDataGetRest );
+// deletes first pack from a list of sdPacks and returns it
 
 PFUNCTION_HEADER( delay );
-// deletes first pack from a list of sgPacks and returns it
+// deletes first pack from a list of sdPacks and returns it
 
 // call an other function as sub routine:
 PFUNCTION_HEADER( callFunction );
@@ -172,21 +172,31 @@ void functions_init()
 	ADD_FUNCTION("DivA",&divA,-1,-1);
 	ADD_FUNCTION("ModA",&modA,-1,-1);
 	ADD_FUNCTION("Rnd",&random_,2,-1);
-	ADD_FUNCTION("MinMax",&sgMinMax,3,-1);
+	ADD_FUNCTION("MinMax",&sdMinMax,3,-1);
 	ADD_FUNCTION("RETURN_ALL",&returnAll,-1,-1);
 	ADD_FUNCTION("RndI",&rndInt,2,-1);
 	ADD_FUNCTION("Inc",&inc,1,-1);
 	ADD_FUNCTION("Dec",&dec,1,-1);
 	ADD_FUNCTION("RndIUnequal",&rndIntUnequal,-1,-1);
-	ADD_FUNCTION("sgPackGetType",&sgpackType,-1,-1);
-	ADD_FUNCTION("sgPackGetCount",&sgpackCount,-1,-1);
-	ADD_FUNCTION("sgPackGetParams",&sgpackParams,-1,-1);
-	ADD_FUNCTION("sgPackFromHuman",&sgPackFromHuman,-1,-1);
-	ADD_FUNCTION("sgDataGetPackFromType",&sgDataGetPackFromType,-1,-1);
-	ADD_FUNCTION("sgDataGetPackFromTypeRest",&sgDataGetPackFromTypeRest,-1,-1);
-	ADD_FUNCTION("sgDataGetPackFromIndex",&sgDataGetPackFromIndex,-1,-1);
-	ADD_FUNCTION("sgDataGetFirst",&sgDataGetFirst,-1,-1);
-	ADD_FUNCTION("sgDataGetRest",&sgDataGetRest,-1,-1);
+
+	// structuredData:
+	ADD_FUNCTION("sdPack_Type",&sdpackType,-1,-1);
+	ADD_FUNCTION("sdPack_Count",&sdpackCount,-1,-1);
+	ADD_FUNCTION("sdPack_Params",&sdpackParams,-1,-1);
+
+	ADD_FUNCTION("sdPack_FromHuman",&sdPackFromHuman,-1,-1);
+
+	ADD_FUNCTION("sdData_FilterAccept",&sdDataGetPackFromType,-1,-1);
+	ADD_FUNCTION("sdData_FilterReject",&sdDataGetPackFromTypeRest,-1,-1);
+
+	ADD_FUNCTION("sdData_First",&sdDataGetFirst,-1,-1);
+	ADD_FUNCTION("sdData_Rest",&sdDataGetRest,-1,-1);
+
+	/*
+	ADD_FUNCTION("sdPack_ToMessage",&todo,-1,-1);
+	ADD_FUNCTION("sdPack_FromMessage",&todo,-1,-1);
+	*/
+
 	ADD_FUNCTION("Delay", &delay, 1, -1 );
 	ADD_FUNCTION("Call", &callFunction, 1, -1);
 
@@ -887,7 +897,7 @@ PFUNCTION_HEADER( modA )
 	}
 }
 
-PFUNCTION_HEADER( sgMinMax )
+PFUNCTION_HEADER( sdMinMax )
 {
 	t_float pMin = atom_getfloat( & pArgs[0] );
 	t_float pMax = atom_getfloat( & pArgs[1] );
@@ -1025,19 +1035,19 @@ PFUNCTION_HEADER( rndIntUnequal )
 }
 
 
-PFUNCTION_HEADER(sgpackType)
+PFUNCTION_HEADER(sdpackType)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	(*pResult) = pArgs[0];
 	ListAtomAdd( & rt->stack, pResult);
 }
-PFUNCTION_HEADER(sgpackCount)
+PFUNCTION_HEADER(sdpackCount)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	(*pResult) = pArgs[1];
 	ListAtomAdd( & rt->stack, pResult);
 }
-PFUNCTION_HEADER(sgpackParams)
+PFUNCTION_HEADER(sdpackParams)
 {
 	t_int count = atom_getfloat( & pArgs[1]);
 	for( int i=0; i<count; i++)
@@ -1048,7 +1058,7 @@ PFUNCTION_HEADER(sgpackParams)
 	}
 }
 
-PFUNCTION_HEADER( sgPackFromHuman )
+PFUNCTION_HEADER( sdPackFromHuman )
 {
 	ListAtomPointer stackSizeInfo; // a stack of the atoms with the current packs size
 	t_int indexNew = 0; // index in the return values
@@ -1075,7 +1085,7 @@ PFUNCTION_HEADER( sgPackFromHuman )
 			}
 			else
 			{
-				post("ERROR: sgPackFromHuman: \")\" found without corresponding \"(\"!");
+				post("ERROR: sdPackFromHuman: \")\" found without corresponding \"(\"!");
 			}
 		}
 		else
@@ -1088,13 +1098,13 @@ PFUNCTION_HEADER( sgPackFromHuman )
 	}
 	if( ListAtomPointerGetSize( &stackSizeInfo ) > 0 )
 	{
-		post("WARNING: sgPackFromHuman: more \"(\" than \")\"!");
+		post("WARNING: sdPackFromHuman: more \"(\" than \")\"!");
 	}
 	ListAtomPointerExit( &stackSizeInfo );
 }
 
-// sgData (lists of sgPacks):
-PFUNCTION_HEADER( sgDataGetPackFromType )
+// sdData (lists of sdPacks):
+PFUNCTION_HEADER( sdDataGetPackFromType )
 {
 	t_atom* pType = &pArgs[0];
 	t_int pos = 1;
@@ -1114,7 +1124,7 @@ PFUNCTION_HEADER( sgDataGetPackFromType )
 		pos += (2 + count);
 	}
 }
-PFUNCTION_HEADER( sgDataGetPackFromTypeRest )
+PFUNCTION_HEADER( sdDataGetPackFromTypeRest )
 {
 	t_atom* pType = &pArgs[0];
 	t_int pos = 1;
@@ -1134,29 +1144,9 @@ PFUNCTION_HEADER( sgDataGetPackFromTypeRest )
 		pos += (2 + count);
 	}
 }
-PFUNCTION_HEADER( sgDataGetPackFromIndex )
-{
-	t_int index = atom_getint(&pArgs[0]);
-	t_int indexCurrent = 0;
-	t_int pos = 1;
-	while( pos < countArgs )
-	{
-		t_int count = atom_getfloat(& pArgs[pos+1]);
-		if( indexCurrent == index )
-		{
-			for( int i=pos; i<pos+2+count; i++ )
-			{
-				t_atom* pAtom = getbytes( sizeof(t_atom));
-				(*pAtom) = pArgs[i] ;
-				ListAtomAdd( & rt->stack, pAtom);
-			}
-		}
-		pos += (2 + count);
-		indexCurrent ++;
-	}
-}
-// returns the first sgPack
-PFUNCTION_HEADER( sgDataGetFirst )
+
+// returns the first sdPack
+PFUNCTION_HEADER( sdDataGetFirst )
 {
 	t_int pos = 0;
 	
@@ -1170,7 +1160,7 @@ PFUNCTION_HEADER( sgDataGetFirst )
 }
 
 
-PFUNCTION_HEADER( sgDataGetRest )
+PFUNCTION_HEADER( sdDataGetRest )
 {
 	t_int pos = 0;
 	
