@@ -60,15 +60,15 @@ void script_obj_on_del_program(
 		t_script_obj* pThis,
 		t_symbol* s
 );
-void script_obj_on_exec(
-	t_script_obj* pThis,
-	t_symbol* prog_name,
-	int argc,
-	t_atom* argv
-);
 void script_obj_on_set_var(
 	t_script_obj* pThis,
 	t_symbol* s,
+	int argc,
+	t_atom* argv
+);
+void script_obj_on_exec(
+	t_script_obj* pThis,
+	t_symbol* prog_name,
 	int argc,
 	t_atom* argv
 );
@@ -76,22 +76,27 @@ void script_obj_on_set_var(
 // ****************************
 // low level execution control:
 // ****************************
-void script_obj_init_prog(
-	t_script_obj* this,
-	t_symbol* prog_name
-);
-
-void script_obj_exit_prog(
-	t_script_obj* this
-);
 
 // executes the current code:
-void sgScriptObj_exec(
+void script_obj_exec_current(
 	t_script_obj* this
 );
 
 //*********************************************
 // utils:
+
+/*
+int script_obj_exec_sub_program(
+	t_script_obj* this,
+	t_symbol* prog_name,
+	BOOL save_current // save runtime data of current program
+);
+*/
+
+RuntimeData* script_obj_init_prog(
+	t_script_obj* this,
+	t_symbol* prog_name
+);
 
 void utils_push_cmd(
 	RuntimeData* rt,
@@ -109,7 +114,7 @@ void utils_push_value(
 
 BOOL utils_is_value(t_atom* pToken);
 
-// calls the function that is on the cmdStack
+// calls the function that is on the command_stack
 void utils_call_function(
 		RuntimeData* rt,
 		FunctionInfo* pFunctionInfo,
@@ -128,7 +133,13 @@ void utils_try_to_exec_immediately(
 
 typedef BOOL TokenFits;
 
-t_atom* lexer_getNextToken(
+t_atom* lexer_peek(
+		RuntimeData* rt
+);
+t_atom* lexer_peek_next(
+		RuntimeData* rt
+);
+t_atom* lexer_pop(
 		RuntimeData* rt
 );
 TokenFits lexer_consumeNextToken(
@@ -204,11 +215,15 @@ void* t_script_obj_init(
 	t_script_obj* x = (t_script_obj* )pd_new( script_class );
 
 	Programs_init( & x->programs, PROGRAMS_HASH_SIZE );
-	x -> pSymbolTable = SymbolTable_New();
+	x->symbol_table = symtab_init();
+	ProgStackInit( & x-> program_stack );
+	OutputBuf_init( & x->output_buffer );
+
+	x -> jump_to_program = NULL;
 
 	x->clock = clock_new( 
 			x,
-			(t_method )sgScriptObj_exec
+			(t_method )script_obj_exec_current
 	);
 
 	x -> pOutlet = outlet_new( & x -> obj, &s_list);
@@ -218,31 +233,23 @@ void* t_script_obj_init(
 		gensym("list"),
 		gensym("prog_set_bang")
 	);
-	if( argc > 0 )
-	{
-		/*
-		inlet_new(
-			& x -> obj,
-			& x -> obj . ob_pd,
-			gensym("set"),
-			gensym("onSetVar")
-		);
-		*/
-	}
+	Scope_init(
+			& x -> global_scope,
+			VARS_HASH_SIZE
+	);
 	for( int i=0; i<argc; i++)
 	{
-		Variable variable;
-		variable . count = 1;
-		variable . values = getbytes( sizeof(t_atom) );
-		SETFLOAT( & variable . values[0], 0 );
-		STValue value;
-		value . type = VALUE;
-		value . variable = variable;
-		STEntry entry;
-		entry . symbol = argv[i];
-		entry . value = value;
-		SymbolTable_AddMainVar(x -> pSymbolTable, entry);
 
+		Atoms* new_var = getbytes( sizeof( Atoms ) );
+		Atoms_init( new_var );
+		t_atom new_atom;
+		SETFLOAT( & new_atom, 0 );
+		Atoms_append( new_var, new_atom );
+		Scope_insert(
+				&  x -> global_scope,
+				atom_getsymbol( & argv[i] ),
+				new_var
+		);
 	}
 	return (void* )x;
 }
@@ -252,17 +259,17 @@ void t_script_obj_exit(
 )
 {
 
+	Scope_exit( & pThis -> global_scope );
+
 	if( pThis->clock)
 		clock_free( pThis -> clock );
 
-	if( pThis->rt )
-	{
-		script_obj_exit_prog( pThis );
-	}
-
 	DB_PRINT("removing sgScript object...");
+	ProgStackExit( & pThis-> program_stack );
 	Programs_exit( & pThis->programs );
-	SymbolTable_Free( pThis -> pSymbolTable );
+	symtab_exit( pThis -> symbol_table );
+
+	OutputBuf_exit( & pThis -> output_buffer );
 }
 
 void sdScript_output(
@@ -302,7 +309,7 @@ void script_obj_on_set_program(
 
 	TokenBuf* new_program = getbytes( sizeof( TokenBuf ) );
 	TokenBuf_init( new_program, prog_size);
-	
+
 	memcpy(
 		TokenBuf_get_array( new_program ),
 		& argv[1],
@@ -355,6 +362,36 @@ void script_obj_on_del_program(
 	);
 }
 
+void script_obj_on_set_var(
+	t_script_obj* pThis,
+	t_symbol* s,
+	int argc,
+	t_atom* argv
+)
+{
+	DB_PRINT("script_obj_on_set_var");
+	if( argc < 1 )
+	{
+		pd_error( pThis, "wrong syntax: expected 'set <global_var> val1 ...'" );
+		return;
+	}
+
+	t_symbol* var_name = atom_getsymbol( & argv[0] );
+	Atoms* value = Scope_get(
+			& pThis -> global_scope,
+			var_name
+	);
+	Atoms_set_size(
+			value,
+			argc-1
+	);
+	memcpy(
+			Atoms_get_array( value ),
+			& argv[1],
+			sizeof( t_atom ) * (argc-1)
+	);
+}
+
 void script_obj_on_exec(
 	t_script_obj* pThis,
 	t_symbol* prog_name,
@@ -371,69 +408,18 @@ void script_obj_on_exec(
 	}
 	// if some program is still loaded, clean it up:
 	if(
-			pThis -> rt
+			ProgStackGetSize( & pThis -> program_stack )
 	)
 	{
-		script_obj_exit_prog( pThis );
+		ProgStackClear( & pThis -> program_stack );
+		clock_unset( pThis -> clock );
 	}
 
-	script_obj_init_prog(
-			pThis,
-			prog_name
-	);
-	if(
-			! pThis->rt
-	)
-	{
-		t_atom a_prog_name;
-		SETSYMBOL( & a_prog_name, prog_name );
-		char buffer[256];
-		atom_string( & a_prog_name, buffer, 255 );
-		pd_error( pThis, "sdScript: no such comand or program: '%s'", buffer );
-		return;
-	}
-	sgScriptObj_exec(
+	pThis -> jump_to_program = prog_name;
+
+	script_obj_exec_current(
 			pThis
 	);
-	if(
-		pThis->rt->delay
-	)
-	{
-		clock_delay( pThis->clock, pThis->rt->delay );
-	}
-	else
-	{
-		script_obj_exit_prog( pThis );
-	}
-}
-
-void script_obj_on_set_var(
-	t_script_obj* pThis,
-	t_symbol* s,
-	int argc,
-	t_atom* argv
-)
-{
-	DB_PRINT("script_obj_on_set_var");
-
-	// __INTERN_SET Set ( <var> ... )
-	t_int prog_count = argc+4;
-	t_atom* prog = getbytes( sizeof(t_atom)* prog_count );
-	SETSYMBOL( &prog[0], gensym("__INTERN_SET"));
-	SETSYMBOL( &prog[1], gensym("Set"));
-	SETSYMBOL( &prog[2], atom_getsymbol(&leftParenthesis));
-	prog[3] = argv[0];
-	memcpy( &prog[4], &argv[1], sizeof(t_atom)*(argc-1));
-	SETSYMBOL( &prog[4+argc-1], atom_getsymbol(&rightParenthesis));
-
-	script_obj_on_set_program(
-			pThis,
-			&s_list,
-			prog_count,
-			prog
-	);
-	script_obj_on_exec( pThis, gensym("__INTERN_SET"), 0, NULL );
-	freebytes( prog, sizeof(t_atom) * prog_count );
 }
 
 
@@ -441,7 +427,7 @@ void script_obj_on_set_var(
 // low level execution control:
 // ****************************
 
-void script_obj_init_prog(
+RuntimeData* script_obj_init_prog(
 	t_script_obj* this,
 	t_symbol* prog_name
 )
@@ -452,150 +438,224 @@ void script_obj_init_prog(
 	);
 	if( !prog )
 	{
-		return;
+		return NULL;
 	}
 
 	RuntimeData* rt = getbytes( sizeof( RuntimeData ) );
-	ListAtom* stack = getbytes( sizeof( ListAtom ) );
-	ListCommand* cmd_stack = getbytes( sizeof( ListCommand ) );
-	OutputBuf* output_buffer = getbytes( sizeof( OutputBuf ) );
 
-	ListAtomInit( stack );
-	ListCommandInit( cmd_stack );
-	OutputBuf_init( output_buffer );
+	ListAtomInit( & rt -> stack );
+	ListCommandInit( & rt -> command_stack  );
+	Scope* scope =
+		symtab_add_scope(
+				this -> symbol_table,
+				prog_name
+		);
 
 	(*rt) = (RuntimeData) {
 		.current_prog_name = prog_name,
 		.current_prog = prog,
-		.pSymbolTable = this-> pSymbolTable,
-		.stack = stack,
-		.cmdStack = cmd_stack,
+		.scope = scope,
+		.global_scope = & this->global_scope,
 		.peek = 0,
-		.outputBuffer = output_buffer,
-		.script_obj = this,
 
 		.countParenthesisRightIgnore = 1,
 		.escape = FALSE,
 		.skipMode = FALSE,
-		.delay = 0
+
+		.script_obj = this
 	};
-	SymbolTable_Clear( rt -> pSymbolTable );
-	this->rt = rt;
-}
-
-
-void script_obj_exit_prog(
-	t_script_obj* this
-)
-{
-	RuntimeData* rt = this->rt;
-
-	OutputBuf_exit( rt -> outputBuffer );
-	ListAtomExit(  rt -> stack );
-	ListCommandExit( rt -> cmdStack );
-
-	freebytes( rt->stack, sizeof( ListAtom ) );
-	freebytes( rt->cmdStack, sizeof( ListCommand ) );
-	freebytes( rt->outputBuffer, sizeof( OutputBuf ) );
-	freebytes( rt, sizeof( RuntimeData ) );
-
-	this->rt = NULL;
+	ProgStackAdd(
+			& this->program_stack,
+			rt
+	);
+	return rt;
 }
 
 // executes the current code:
-void sgScriptObj_exec(
+void script_obj_exec_current(
 	t_script_obj* this
 )
 {
-
-	RuntimeData* rt = this->rt;
-	rt -> delay = 0;
-
-	t_atom* pCurrentToken=NULL;
-	while(
-		( rt->delay == 0 )
-		&&
-		(pCurrentToken = lexer_getNextToken(rt))
-	)
+	do
+		/*
+		while(
+			this->jump_to_program != NULL
+			||
+			// 
+			(
+			 this->delay == 0
+			 &&
+			 ProgStackGetSize( & this-> program_stack ) != 0
+			)
+		)
+		*/
 	{
-		char buf[256];
-		atom_string(pCurrentToken, buf, 256);
-		DB_PRINT("current Token: '%s'", buf);
+		// this means load a new program and execute it:
+		if( this->jump_to_program )
+		{
+			// create new runtime context for the program:
+			RuntimeData* rt = script_obj_init_prog(
+					this,
+					this->jump_to_program
+			);
+			if(
+					!rt
+			)
+			{
+				t_atom a_prog_name;
+				SETSYMBOL( & a_prog_name, this->jump_to_program );
+				char buffer[256];
+				atom_string( & a_prog_name, buffer, 255 );
+				pd_error( this, "sdScript: no such comand or program: '%s'", buffer );
+				return; 
+			}
+		}
 
-		// 1. switch escape mode on/off:
-		if( compareAtoms(pCurrentToken, &escapeBegin) )
+		// load current program:
+		ProgStackEl* last_prog_el = ProgStackGetLast(
+				& this-> program_stack
+		);
+		RuntimeData* rt = last_prog_el -> pData;
+
+		this-> delay = 0;
+		this-> jump_to_program = NULL;
+		t_atom* pCurrentToken=NULL;
+		while(
+			( this->delay == 0 )
+			&&
+			( this->jump_to_program == NULL )
+			&&
+			(pCurrentToken = lexer_pop(rt))
+		)
 		{
-			rt -> escape = TRUE;
-		}
-		else if( compareAtoms(pCurrentToken, &escapeEnd) )
-		{
-			if ( rt->escape == FALSE)
-				post("ERROR: #] found, without corresponding #[!");
-			rt->escape = FALSE;
-		}
-		else if( ! rt->escape )
-		{
-			FunctionInfo* pFunctionInfo = getFunctionInfo( pCurrentToken );
-			// <Command>
-			if( pFunctionInfo )
+			char buf[256];
+			atom_string(pCurrentToken, buf, 256);
+			DB_PRINT("current Token: '%s'", buf);
+
+			// 1. switch escape mode on/off:
+			if( compareAtoms(pCurrentToken, &escapeBegin) )
 			{
-				if( ! rt -> skipMode )
-					utils_push_cmd( rt, pFunctionInfo);	
-				// eat the "(" that follows:
-				if( ! lexer_consumeNextToken(rt, & leftParenthesis) )
-				{
-					// report syntax error:
-					post("ERROR: '(' expected, after ...");
-				}
-				else if( rt->skipMode )
-					(rt -> countParenthesisRightIgnore) ++;
+				rt -> escape = TRUE;
 			}
-			// ')'
-			else if ( compareAtoms(pCurrentToken,&rightParenthesis) )
+			else if( compareAtoms(pCurrentToken, &escapeEnd) )
 			{
-				if( rt->skipMode )
+				if ( rt->escape == FALSE)
+					post("ERROR: #] found, without corresponding #[!");
+				rt->escape = FALSE;
+			}
+			else if( ! rt->escape )
+			{
+				FunctionInfo* pFunctionInfo = getFunctionInfo( pCurrentToken );
+				// <Command>
+				if( pFunctionInfo )
 				{
-					rt -> countParenthesisRightIgnore --;
-					if( rt -> countParenthesisRightIgnore == 0 )
+					if( ! rt -> skipMode )
 					{
-						rt -> skipMode = FALSE;
-						rt -> countParenthesisRightIgnore = 1;
+						DB_PRINT("Is a command");
+						utils_push_cmd( rt, pFunctionInfo);	
 					}
+					// eat the "(" that follows:
+					if( ! lexer_consumeNextToken(rt, & leftParenthesis) )
+					{
+						// report syntax error:
+						post("ERROR: '(' expected, after ...");
+					}
+					else if( rt->skipMode )
+						(rt -> countParenthesisRightIgnore) ++;
 				}
-				else if ( ListCommandGetSize( rt->cmdStack ) )
+				// ')'
+				else if ( compareAtoms(pCurrentToken,&rightParenthesis) )
 				{
-					utils_pop_cmd_and_exec( rt );
+					if( rt->skipMode )
+					{
+						rt -> countParenthesisRightIgnore --;
+						if( rt -> countParenthesisRightIgnore == 0 )
+						{
+							rt -> skipMode = FALSE;
+							rt -> countParenthesisRightIgnore = 1;
+						}
+					}
+					else if( ListCommandGetSize( & rt->command_stack ) )
+					{
+						utils_pop_cmd_and_exec( rt );
+					}
+					else
+						post("ERROR: ')' found, but no corresponding 'func ('");
 				}
-				else
-					post("ERROR: ')' found, but no corresponding 'func ('");
+				// <value>
+				else if( ! rt->skipMode )
+				{
+					// if in escape mode, everything is considered a value:
+					if (utils_is_value(pCurrentToken))
+					{
+						DB_PRINT("is a value");
+						utils_push_value(rt,pCurrentToken);
+					}
+					else
+					{
+						post("ERROR: token is neither function, var, or procedure: '%s'",buf);
+					}
+					utils_try_to_exec_immediately(rt);
+				}
 			}
-			// <value>
-			else if( ! rt->skipMode )
+			else // we are in escape mode:
 			{
-				// if in escape mode, everything is considered a value:
-				if (utils_is_value(pCurrentToken))
+				DB_PRINT("is a value");
+				if( ! rt->skipMode )
 				{
-					DB_PRINT("is a value");
+					// if in escape mode, everything is considered a value:
 					utils_push_value(rt,pCurrentToken);
+					utils_try_to_exec_immediately(rt);
 				}
-				else
-				{
-					post("ERROR: token is neither function, var, or procedure: '%s'",buf);
-				}
-				utils_try_to_exec_immediately(rt);
 			}
 		}
-		else // we are in escape mode:
+		/*
+			while(
+				( this->delay == 0 )
+				&&
+				( this->jump_to_program == NULL )
+				&&
+				(pCurrentToken = lexer_pop(rt))
+			)
+		*/
+		// if the the program set itself asleep:
+		if(
+				this->delay
+		)
 		{
-			DB_PRINT("is a value");
-			if( ! rt->skipMode )
+			// start a timer to continue execution:
+			clock_delay( this->clock, this->delay );
+		}
+		// if the program is finished:
+		else if(
+				! lexer_peek_next( rt )
+		)
+		{
+			if( this->jump_to_program )
 			{
-				// if in escape mode, everything is considered a value:
-				utils_push_value(rt,pCurrentToken);
-				utils_try_to_exec_immediately(rt);
+				char buf[256];
+				t_atom prog_name_atom;
+				SETSYMBOL( &prog_name_atom, rt -> current_prog_name );
+				atom_string( &prog_name_atom, buf, 256);
+				DB_PRINT( "program freed before jump: '%s'", buf );
 			}
+			// the program has finished, so we clean it up:
+			ProgStackDel(
+					& this -> program_stack,
+					last_prog_el
+			);
 		}
 	}
+	while(
+			this->jump_to_program != NULL
+			||
+			// 
+			(
+			 this->delay == 0
+			 &&
+			 ProgStackGetSize( & this-> program_stack ) != 0
+			)
+	);
 }
 
 //*********************************************
@@ -606,29 +666,26 @@ void utils_push_cmd(
 	FunctionInfo* pFunctionInfo
 )
 {
-	// <func>
-	DB_PRINT("Is a function");
 	// add the function to the command stack:
 	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
 	pCurrentCommandInfo -> stackHeight0 =
-		ListAtomGetSize ( rt -> stack );
+		ListAtomGetSize ( & rt -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
 	ListCommandAdd (
-			rt->cmdStack,
+			& rt->command_stack,
 			pCurrentCommandInfo
 	);
 }
 
 void utils_pop_cmd_and_exec(
 	RuntimeData* rt
-	//ElementCommand* pElCurrentFunction
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast( rt->cmdStack );
+		ListCommandGetLast( & rt->command_stack );
 	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
 	t_int paramCount =
-		ListAtomGetSize ( rt -> stack )
+		ListAtomGetSize ( & rt -> stack )
 		- pElCurrentFunction -> pData -> stackHeight0
 	;
 	if(
@@ -642,7 +699,7 @@ void utils_pop_cmd_and_exec(
 				pFunctionInfo,
 				paramCount
 		);
-		pElCurrentFunction = ListCommandGetLast ( rt -> cmdStack );
+		pElCurrentFunction = ListCommandGetLast ( & rt -> command_stack );
 	}
 	else
 	{
@@ -652,7 +709,7 @@ void utils_pop_cmd_and_exec(
 	}
 
 	//delete the function from Stack, because it has been executed:
-	ListCommandDel( rt -> cmdStack, pElCurrentFunction);
+	ListCommandDel( & rt -> command_stack, pElCurrentFunction);
 	utils_try_to_exec_immediately(
 			rt
 	);
@@ -666,7 +723,7 @@ void utils_push_value(
 	// put value on stack:
 	t_atom* pValue = getbytes(sizeof(t_atom));
 	*pValue = *pCurrentToken;
-	ListAtomAdd( rt -> stack, pValue);
+	ListAtomAdd( & rt -> stack, pValue);
 }
 
 BOOL utils_is_value(t_atom* pToken)
@@ -676,7 +733,7 @@ BOOL utils_is_value(t_atom* pToken)
 	return TRUE;
 }
 
-// calls the function that is on the cmdStack
+// calls the function that is on the command_stack
 void utils_call_function(
 	RuntimeData* rt,
 	FunctionInfo* pFunctionInfo,
@@ -686,20 +743,23 @@ void utils_call_function(
 	// first copy params:
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
-		ElementAtom* pElOpNext = ListAtomGetLast( rt -> stack);
+		ElementAtom* pElOpNext = ListAtomGetLast( & rt -> stack);
 		for ( int i=countParam-1; i>=0; i--)
 		{
 			pArgs[i] = *(pElOpNext-> pData);
-			pElOpNext = ListAtomGetPrev( rt -> stack, pElOpNext);
+			pElOpNext = ListAtomGetPrev( & rt -> stack, pElOpNext);
 		}
 	}
 	// ... delete them from stack
 	for ( int i=0; i<countParam; i++)
 	{
-		ElementAtom* pElParam = ListAtomGetLast ( rt -> stack );
-		ListAtomDel( rt -> stack, pElParam );
+		ElementAtom* pElParam = ListAtomGetLast ( & rt -> stack );
+		ListAtomDel( & rt -> stack, pElParam );
 	}
-	DB_PRINT("utils_call_function called");
+
+	char buf[256];
+	atom_string( & pFunctionInfo->name, buf, 256 );
+	DB_PRINT("executing command %s", buf);
 	// call command:
 	(pFunctionInfo -> pFunc) (
 			rt,
@@ -715,7 +775,7 @@ void utils_try_to_exec_immediately(
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast ( rt -> cmdStack );
+		ListCommandGetLast ( & rt -> command_stack );
 	if( !pElCurrentFunction )
 		return ;
 	// if the topmost command is a dont-read-all-parameters-command:
@@ -725,7 +785,7 @@ void utils_try_to_exec_immediately(
 		FunctionInfo* pFunctionInfo = pElCurrentFunction->pData -> pFunctionInfo;
 		// check if there are enough values on stack now to call the next function
 		t_int paramCount =
-			ListAtomGetSize ( rt -> stack )
+			ListAtomGetSize ( & rt -> stack )
 			- pElCurrentFunction -> pData -> stackHeight0
 		;
 		if( paramCount== pFunctionInfo -> executeAfter )
@@ -738,14 +798,14 @@ void utils_try_to_exec_immediately(
 			atom_string(& pFunctionInfo->name, buf, 256);
 			post("ERROR: wrong number of parameters for %s", buf);
 		}
-		ListCommandDel( rt -> cmdStack, pElCurrentFunction);
+		ListCommandDel( & rt -> command_stack, pElCurrentFunction);
 	}
 }
 
 //*********************************************
 // lexer methods:
 
-t_atom* lexer_getNextToken(
+t_atom* lexer_peek(
 		RuntimeData* rt
 )
 {
@@ -753,9 +813,29 @@ t_atom* lexer_getNextToken(
 	if( rt -> peek < TokenBuf_get_size( rt -> current_prog ) )
 	{
 		pRet = & TokenBuf_get_array( rt -> current_prog )[ rt -> peek ];
-		rt -> peek += 1;
 	}
 	return pRet;
+}
+
+t_atom* lexer_peek_next(
+		RuntimeData* rt
+)
+{
+	t_atom* pRet = 0;
+	if( rt -> peek + 1 < TokenBuf_get_size( rt -> current_prog ) )
+	{
+		pRet = & TokenBuf_get_array( rt -> current_prog )[ rt -> peek + 1];
+	}
+	return pRet;
+}
+
+t_atom* lexer_pop(
+		RuntimeData* rt
+)
+{
+	t_atom* ret = lexer_peek( rt );
+	rt -> peek ++;
+	return ret;
 }
 
 TokenFits lexer_consumeNextToken(
@@ -763,6 +843,6 @@ TokenFits lexer_consumeNextToken(
 	t_atom* pExpectedSym
 )
 {
-	t_atom* pNextToken = lexer_getNextToken( rt );
+	t_atom* pNextToken = lexer_pop( rt );
 	return compareAtoms(pNextToken, pExpectedSym );
 }

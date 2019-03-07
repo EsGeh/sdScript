@@ -2,167 +2,67 @@
 
 #include <math.h>
 
-#define BASESIZE 2
-
-struct SSymbolTable
-{
-	t_int entryCount;
-	STEntry* entries;
-	t_int mainVarsCount;
-	STEntry* mainVars;
-};
 
 
-t_int getAllocatedSize( SymbolTable* pThis );
-t_int getAllocatedSizeMainVars( SymbolTable* pThis );
-
-SymbolTable* SymbolTable_New()
+SymbolTable* symtab_init()
 {
-	SymbolTable* pRet = getbytes(sizeof(SymbolTable));
-	SymbolTable_Init( pRet );
-	return pRet;
-}
-void SymbolTable_Free(SymbolTable* pSymbolTable)
-{
-	SymbolTable_Exit( pSymbolTable );
-	freebytes(pSymbolTable, sizeof(SymbolTable));
+	SymbolTable* x = getbytes( sizeof( SymbolTable ) );
+	SymbolTable_init( x, SCOPES_HASH_SIZE );
+	return x;
 }
 
-void SymbolTable_Init (SymbolTable* pThis)
+void symtab_exit(
+	SymbolTable* x
+)
 {
-	pThis -> entries = getbytes( sizeof(STEntry)* BASESIZE );
-	pThis -> mainVars = getbytes( sizeof(STEntry)* BASESIZE );
-	pThis -> entryCount = 0;
-	pThis -> mainVarsCount = 0;
-}
-void SymbolTable_Exit (SymbolTable* pThis)
-{
-	for( int i=0; i< pThis->entryCount; i++)
-	{
-		STValue* pCurrent = & pThis->entries [i] . value;
-		if( pCurrent->type == VALUE )
-		{
-			Variable* pVar = & pCurrent -> variable;
-			freebytes( pVar-> values, sizeof(t_atom)*pVar->count);
-		}
-	}
-	for( int i=0; i< pThis->mainVarsCount; i++)
-	{
-		STValue* pCurrent = & pThis->mainVars [i] . value;
-		if( pCurrent->type == VALUE )
-		{
-			Variable* pVar = & pCurrent -> variable;
-			freebytes( pVar-> values, sizeof(t_atom)*pVar->count);
-		}
-	}
-	freebytes( pThis -> entries, sizeof(STEntry)* getAllocatedSize(pThis));
-	freebytes( pThis -> mainVars, sizeof(STEntry)* getAllocatedSizeMainVars(pThis));
-	pThis -> entryCount = 0;
-	pThis -> mainVarsCount = 0;
-}
-/*void SymbolTable_AddVar (SymbolTable* pThis, t_atom symbol, t_int count, t_atom* values)
-{
-}
-void SymbolTable_SetVar (SymbolTable* pThis, t_atom symbol, t_int count, t_atom* values)
-{
-}*/
-void SymbolTable_Add (SymbolTable* pThis, STEntry Entry)
-{
-	t_int iAllocated = getAllocatedSize(pThis);
-	if ( pThis -> entryCount >= iAllocated)
-	{
-		DB_PRINT("double size of the symbol table...");
-		doubleSize( pThis );
-	}
-	pThis -> entries [ pThis -> entryCount ] = Entry;
-	pThis -> entryCount ++;
-}
-void SymbolTable_Del (SymbolTable* pThis, STEntry Entry)
-{
-	post("SymbolTable_Del not yet implemented!");
-}
-void SymbolTable_AddMainVar(SymbolTable* pThis, STEntry Entry)
-{
-	t_int iAllocated = getAllocatedSizeMainVars(pThis);
-	if ( pThis -> mainVarsCount >= iAllocated)
-	{
-		DB_PRINT("double size of the symbol table...");
-		doubleSizeMainVars( pThis );
-	}
-	pThis -> mainVars [ pThis -> mainVarsCount ] = Entry;
-	pThis -> mainVarsCount ++;
+	SymbolTable_exit( x );
+	freebytes( x, sizeof( SymbolTable ) );
 }
 
-void SymbolTable_Clear(SymbolTable* pThis)
+Scope* symtab_add_scope(
+	SymbolTable* x,
+	t_symbol* name
+)
 {
-	for( int i=0; i< pThis->entryCount; i++)
-	{
-		STValue* pCurrent = & pThis->entries [i] . value;
-		if( pCurrent->type == VALUE )
-		{
-			Variable* pVar = & pCurrent -> variable;
-			freebytes( pVar-> values, sizeof(t_atom)*pVar->count);
-		}
-	}
-	freebytes( pThis -> entries, sizeof(STEntry)* getAllocatedSize(pThis));
-	pThis -> entries = getbytes( sizeof(STEntry)* BASESIZE );
-	pThis -> entryCount = 0;
+	Scope* scope = getbytes( sizeof( Scope ) );
+	Scope_init(
+			scope,
+			VARS_HASH_SIZE
+	);
+	SymbolTable_insert(
+			x,
+			name,
+			scope
+	);
+	return scope;
 }
 
-STValue* SymbolTable_Lookup(SymbolTable* pThis, t_atom* pSymbol)
+Scope* symtab_get_scope(
+		SymbolTable* x,
+		t_symbol* name
+)
 {
-	char buf[256];
-	atom_string(pSymbol, buf, 256);
-	DB_PRINT("SymbolTable_Lookup(..,%s)",buf);
-	for( int i=0; i< pThis -> mainVarsCount; i++)
-	{
-		STEntry* pEntryCurrent = & pThis -> mainVars [i];
-		/*atom_string( &pEntryCurrent -> symbol, buf, 256);
-		DB_PRINT("entry: %s", buf);*/
-		if( compareAtoms( & pEntryCurrent -> symbol , pSymbol))
-			return & pEntryCurrent -> value;
-	}
-	for( int i=0; i< pThis -> entryCount; i++)
-	{
-		STEntry* pEntryCurrent = & pThis -> entries [i];
-		/*atom_string( &pEntryCurrent -> symbol, buf, 256);
-		DB_PRINT("entry: %s", buf);*/
-		if( compareAtoms( & pEntryCurrent -> symbol , pSymbol))
-			return & pEntryCurrent -> value;
-	}
-	return NULL;
+	return SymbolTable_get( x, name );
 }
 
-void doubleSize(SymbolTable* pThis)
+void symtab_del_scope(
+	SymbolTable* x,
+	t_symbol* name
+)
 {
-	t_int iAllocated = getAllocatedSize(pThis);
-	// realloc:
-	STEntry* pNewArray = getbytes ( sizeof(STEntry)*iAllocated*2);
-	//copybytes( pThis -> entries, pThis -> entryCount );
-	memcpy( pNewArray, pThis -> entries, sizeof(STEntry)* pThis -> entryCount);
-	freebytes( pThis -> entries, getAllocatedSize( pThis ) );
-	pThis -> entries = pNewArray;
-}
-void doubleSizeMainVars(SymbolTable* pThis)
-{
-	t_int iAllocated = getAllocatedSizeMainVars(pThis);
-	// realloc:
-	STEntry* pNewArray = getbytes ( sizeof(STEntry)*iAllocated*2);
-	//copybytes( pThis -> mainVars, pThis -> mainVarsCount );
-	memcpy( pNewArray, pThis -> mainVars, sizeof(STEntry)* pThis -> mainVarsCount);
-	freebytes( pThis -> mainVars, getAllocatedSizeMainVars( pThis ) );
-	pThis -> mainVars = pNewArray;
+	SymbolTable_delete(
+			x,
+			name
+	);
 }
 
-
-t_int getAllocatedSize( SymbolTable* pThis )
+Atoms* symtab_get_value(
+		Scope* scope,
+		t_symbol* name
+)
 {
-	if ( pThis -> entryCount <= BASESIZE ) return BASESIZE;
-	return BASESIZE * (ceil ( log2 ( pThis -> entryCount )));
+	return Scope_get(
+			scope,
+			name
+	);
 }
-t_int getAllocatedSizeMainVars( SymbolTable* pThis )
-{
-	if ( pThis -> mainVarsCount <= BASESIZE ) return BASESIZE;
-	return BASESIZE * (ceil ( log2 ( pThis -> mainVarsCount )));
-}
-

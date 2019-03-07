@@ -354,6 +354,18 @@ INLINE int ARRAY_TYPE##_get_alloc_size( \
 	return BUF_TYPE##_get_size( & array->buffer ); \
 } \
  \
+INLINE void ARRAY_TYPE##_set_size( \
+	ARRAY_TYPE* array, \
+	int size \
+) \
+{ \
+	if( size > ARRAY_TYPE##_get_alloc_size( array ) ) \
+	{ \
+		BUF_TYPE##_resize( & array->buffer, size ); \
+	} \
+	array->size = size; \
+} \
+ \
 INLINE void ARRAY_TYPE##_append( \
 	ARRAY_TYPE* array, \
 	EL_TYPE el \

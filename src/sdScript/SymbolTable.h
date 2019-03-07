@@ -2,46 +2,66 @@
 #define _SYMBOLTABLE_H_ 
 
 #include "Global.h"
+#include "Map.h"
 
-struct SSymbolTable;
-#define SymbolTable struct SSymbolTable
-#define Variable struct SVariable
-
-typedef enum ESTValueType { VALUE } STValueType;
-typedef struct SSTValue {
-	STValueType type;
-	union
-	{
-		struct SVariable {
-			t_int count;
-			t_atom* values;
-		} variable;
-	};
-} STValue;
-typedef struct SSTEntry {
-	t_atom symbol;
-	STValue value;
-} STEntry;
-
-SymbolTable* SymbolTable_New();
-void SymbolTable_Free(SymbolTable* pSymbolTable);
-void SymbolTable_Init (SymbolTable* pThis);
-void SymbolTable_Exit (SymbolTable* pThis);
-
-/*void SymbolTable_AddVar (SymbolTable* pThis, t_atom symbol, t_int count, t_atom* values);
-void SymbolTable_SetVar (SymbolTable* pThis, t_atom symbol, t_int count, t_atom* values);*/
-void SymbolTable_Add (SymbolTable* pThis, STEntry Entry);
-void SymbolTable_Del (SymbolTable* pThis, STEntry Entry);
-void SymbolTable_AddMainVar(SymbolTable* pThis, STEntry Entry);
-
-// clear all variables except main variables:
-void SymbolTable_Clear(SymbolTable* pThis);
-
-STValue* SymbolTable_Lookup(SymbolTable* pThis, t_atom* pSymbol);
-
-void doubleSize(SymbolTable* pThis);
-void doubleSizeMainVars(SymbolTable* pThis);
+#define VARS_HASH_SIZE 1024
+#define SCOPES_HASH_SIZE 1024
 
 
+DECL_DYN_ARRAY(Atoms,t_atom)
+DEF_DYN_ARRAY(Atoms,t_atom)
+
+#define DEL_VAR(var,size) \
+	Atoms_exit( var ); \
+	freebytes( var, size )
+
+#define HASH_SYMBOL(sym) \
+	((unsigned int )sym)
+
+DECL_MAP(Scope,t_symbol*,Atoms,getbytes,freebytes,DEL_VAR,HASH_SYMBOL)
+DEF_MAP(Scope,t_symbol*,Atoms,getbytes,freebytes,DEL_VAR,HASH_SYMBOL)
+
+#define DEL_SCOPE(scope,size) \
+	Scope_exit( scope ); \
+	freebytes( scope, size )
+
+/*
+DECL_MAP(ScopeVars,t_symbol*,Atoms,getbytes,freebytes,DEL_VAR,HASH_SYMBOL)
+DEF_MAP(ScopeVars,t_symbol*,Atoms,getbytes,freebytes,DEL_VAR,HASH_SYMBOL)
+
+typedef struct SScope {
+	ScopeVars vars;
+	// other info...
+	
+} Scope;
+
+#define DEL_SCOPE(scope,size) \
+	ScopeVars_exit( & scope->vars ); \
+	freebytes( scope, size )
+*/
+
+DECL_MAP(SymbolTable,t_symbol*,Scope,getbytes,freebytes,DEL_SCOPE,HASH_SYMBOL)
+DEF_MAP(SymbolTable,t_symbol*,Scope,getbytes,freebytes,DEL_SCOPE,HASH_SYMBOL)
+
+SymbolTable* symtab_init();
+void symtab_exit(
+	SymbolTable* x
+);
+Scope* symtab_add_scope(
+	SymbolTable* x,
+	t_symbol* name
+);
+Scope* symtab_get_scope(
+		SymbolTable* x,
+		t_symbol* name
+);
+void symtab_del_scope(
+	SymbolTable* x,
+	t_symbol* name
+);
+Atoms* symtab_get_value(
+		Scope* scope,
+		t_symbol* name
+);
 
 #endif 
