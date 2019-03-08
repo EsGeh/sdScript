@@ -134,7 +134,7 @@ void functions_init()
 	ADD_FUNCTION("Mod",&mod,2,-1);
 	ADD_FUNCTION("Print",&print,-1,-1);
 	ADD_FUNCTION("Pack",&pack,-1,-1);
-	ADD_FUNCTION("Out",&out,0,-1);
+	ADD_FUNCTION("Out",&out,-1,-1);
 	ADD_FUNCTION("Var",&addVar,-1,-1);
 	ADD_FUNCTION("Get",&getVar,1,-1);
 	ADD_FUNCTION("GetA",&getVarA,2,-1);
@@ -306,11 +306,47 @@ PFUNCTION_HEADER( pack )
 
 PFUNCTION_HEADER( out )
 {
-	sdScript_output(
-		rt -> script_obj,
-		OutputBuf_get_size( & rt -> script_obj -> output_buffer ),
-		OutputBuf_get_array( & rt -> script_obj -> output_buffer )
+	t_atom* array =
+		OutputBuf_get_array( & rt -> script_obj -> output_buffer );
+	t_int size =
+		OutputBuf_get_size( & rt -> script_obj -> output_buffer );
+	if( countArgs == 0 )
+	{
+		if( size > 0 )
+		{
+			if( array[0].a_type == A_SYMBOL )
+			{
+				
+				sdScript_output(
+					rt -> script_obj,
+					atom_getsymbol( & array[0] ),
+					size - 1,
+					& array[1]
+				);
+			}
+			else
+			{
+				sdScript_output(
+					rt -> script_obj,
+					&s_list,
+					size,
+					array
+				);
+			}
+		}
+	}
+	else
+	{
+		t_symbol* selector = atom_getsymbol(
+			& pArgs[0]
 		);
+		sdScript_output(
+			rt -> script_obj,
+			selector,
+			size,
+			array
+		);
+	}
 	OutputBuf_clear( & rt -> script_obj -> output_buffer );
 }
 

@@ -117,6 +117,7 @@ DEF_LIST( ProgStack, ProgStackEl, RuntimeData, getbytes, freebytes, DEL_RT );
 
 void sdScript_output(
 	t_script_obj* pThis,
+	t_symbol* selector,
 	int argc,
 	t_atom* argv
 );

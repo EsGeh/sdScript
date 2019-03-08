@@ -274,13 +274,14 @@ void t_script_obj_exit(
 
 void sdScript_output(
 	t_script_obj* pThis,
+	t_symbol* selector,
 	int argc,
 	t_atom* argv
 )
 {
-	outlet_list(
+	outlet_anything(
 		pThis -> pOutlet,
-		&s_list,
+		selector,
 		argc,
 		argv
 	);

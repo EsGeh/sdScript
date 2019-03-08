@@ -1,34 +1,39 @@
-#N canvas 752 30 846 189 10;
+#N canvas 0 30 1598 543 10;
 #X obj 153 304 print OUT;
 #X obj 161 227 r \$0-execScript;
 #X obj 161 250 t b l;
-#N canvas 0 30 1598 490 basic 0;
+#N canvas 0 30 1598 543 basic 0;
 #X obj 70 331 outlet;
-#X text 276 192 test basic syntax;
+#X text 282 260 test basic syntax;
 #X msg 134 98 list Print ( Add ( 2 3 ) ) Out ( );
 #X msg 91 56 list bla ( 7 );
 #X text 186 118 try to call a function with wrong number of parameters:
 ;
 #X msg 186 138 list Add ( 2 3 4 );
 #X text 133 77 standard parameter passing:;
-#X msg 228 175 list Print ( Hallo Add ( 1 7 ) ) Print ( test ) Out
-( );
 #X text 227 156 Print can take a variable number of parameters:;
 #X text 89 35 try invocing a command that does not exist;
-#X obj 522 323 s \$0-execScript;
-#X msg 522 301 list Print ( #[ dirty ( ( ( #] ) Out ( );
-#X text 488 273 escaping function names and "(" \, ")":;
-#X msg 275 210 list Print ( Add ( 2 3 ) ) Print ( Mul ( 2 3 ) ) Print
+#X obj 731 114 s \$0-execScript;
+#X msg 731 92 list Print ( #[ dirty ( ( ( #] ) Out ( );
+#X text 697 64 escaping function names and "(" \, ")":;
+#X msg 281 278 list Print ( Add ( 2 3 ) ) Print ( Mul ( 2 3 ) ) Print
 ( Holla! ) Out ( );
+#X msg 228 175 list Print ( Hallo Add ( 1 7 ) ) Print ( test ) Out
+( );
+#X text 249 195 Out ( [<selector>] ) dumps what has been printed so
+far \, optionally prepended by some "selector";
+#X msg 249 227 list Print ( some_msg ) Out ( ) Print ( some_msg ) Out
+( sel );
 #X connect 2 0 0 0;
 #X connect 3 0 0 0;
 #X connect 5 0 0 0;
-#X connect 7 0 0 0;
-#X connect 11 0 10 0;
+#X connect 10 0 9 0;
+#X connect 12 0 0 0;
 #X connect 13 0 0 0;
+#X connect 15 0 0 0;
 #X restore 396 43 pd basic;
 #X obj 396 65 s \$0-execScript;
-#N canvas 0 30 750 854 Variables 0;
+#N canvas 0 30 1598 543 Variables 0;
 #X text 75 39 test using variables:;
 #X msg 78 58 list Var ( list 7 8 9 ) Print ( Get ( list ) ) Set ( list
 1 2 3 ) Print ( Pack ( paket Get ( list ) ) ) Out ( );
@@ -46,11 +51,10 @@ Out ( );
 #X connect 4 0 8 0;
 #X connect 6 0 8 0;
 #X restore 395 206 pd Variables;
-#N canvas 0 30 750 854 Sets 0;
+#N canvas 0 605 398 279 Sets 0;
 #X msg 445 319 list Var ( set SetOp ( 1 2 3 union 1 8 9 ) ) Print (
 set Get ( set ) ) Print ( contains? Contains ( 100 Get ( set ) ) )
 Out ( );
-#X msg 66 139 list Print ( Setify ( 1 3 4 2 5 1 1 2 ) ) Out ( );
 #X msg 493 386 list Print ( SetOp ( 0 1 2 3 4 5 6 7 8 9 10 11 minus
 1 3 7 ) ) Out ( );
 #X text 445 289 set operations syntax: SetOp ( s0 s1 ... <op> t0 t1
@@ -67,14 +71,15 @@ values \, so that "s disjoint t == empty set" is true;
 #X text 192 163 Card gives you the number of elements in a list;
 #X obj 103 561 outlet;
 #X text 26 19 Operations on Sets of numbers:;
-#X connect 0 0 10 0;
-#X connect 1 0 10 0;
-#X connect 2 0 10 0;
-#X connect 5 0 10 0;
-#X connect 6 0 10 0;
-#X connect 8 0 10 0;
+#X msg 67 139 list Print ( Setify ( 1 3 4 2 5 1 1 2 ) ) Out ( );
+#X connect 0 0 9 0;
+#X connect 1 0 9 0;
+#X connect 4 0 9 0;
+#X connect 5 0 9 0;
+#X connect 7 0 9 0;
+#X connect 11 0 9 0;
 #X restore 394 259 pd Sets;
-#N canvas 0 30 750 854 conditional 0;
+#N canvas 0 30 1598 543 conditional 0;
 #X text 41 33 test conditionality;
 #X msg 42 51 list If ( Add ( 0 1 ) Print ( execute ) ) If ( Sub ( 3
 3 ) Print ( dont execute ) ) Out ( );
@@ -89,7 +94,7 @@ values \, so that "s disjoint t == empty set" is true;
 #X connect 3 0 6 0;
 #X connect 4 0 6 0;
 #X restore 393 146 pd conditional;
-#N canvas 0 30 750 854 Random 0;
+#N canvas 0 30 1598 543 Random 0;
 #X msg 324 124 list Print ( RndI ( 1 6 ) ) Out ( );
 #X msg 39 50 list Print ( Rnd ( -1 1 ) ) Out ( );
 #X obj 89 292 outlet;
@@ -100,7 +105,7 @@ values \, so that "s disjoint t == empty set" is true;
 #X connect 1 0 2 0;
 #X connect 3 0 2 0;
 #X restore 524 38 pd Random;
-#N canvas 0 30 750 854 sgPack 0;
+#N canvas 0 30 1598 543 sgPack 0;
 #X text 20 29 test constructing sgPacks:;
 #X msg 24 46 list Print ( Pack ( testPack Pack ( SubPack 1 2 3 ) Hussa
 Bla ) ) Out ( );
@@ -163,17 +168,14 @@ Get ( event ) ) ) Out ( );
 ( done ) Out ( );
 #X connect 2 0 0 0;
 #X restore 534 158 pd delay;
-#N canvas 0 30 750 854 multiple 1;
+#N canvas 0 30 1598 543 multiple 0;
 #X msg 94 182 set PARAM \$1;
 #X floatatom 94 160 5 0 0 0 - - -;
 #X msg 597 126 list ClearMain ( );
 #X msg 537 78 list VarMain ( PARAM 0 );
-#X msg 385 245 list Print ( Get ( PARAM ) ) Out ( );
 #X obj 209 232 sdScript PARAM, f 17;
 #X obj 209 255 print;
 #X msg 574 102 list ClearMain ( ) VarMain ( PARAM 7 8 9 );
-#X msg 380 205 list Print ( Get ( PARAM ) ) Print ( MulA ( Get ( PARAM
-) 2 ) ) Out ( );
 #X text 322 132 run the "bang" program;
 #X text 387 181 set the "bang" program;
 #X msg 327 150 bang;
@@ -209,28 +211,31 @@ This way we can repeat an action (possibly endless);
 #X msg 425 784 list;
 #X text 423 751 sending another (e.g. empty) program stops all programs
 (including delays);
-#X connect 0 0 5 0;
+#X msg 385 245 list Print ( list Get ( PARAM ) ) Out ( );
+#X msg 380 205 list Print ( Get ( PARAM ) ) Print ( MulA ( Get ( PARAM
+) 2 ) ) Out ( list );
+#X connect 0 0 4 0;
 #X connect 1 0 0 0;
-#X connect 4 0 5 1;
-#X connect 5 0 6 0;
-#X connect 8 0 5 1;
-#X connect 11 0 5 0;
-#X connect 12 0 17 0;
-#X connect 16 0 12 0;
-#X connect 18 0 19 0;
-#X connect 19 0 12 0;
-#X connect 23 0 25 0;
-#X connect 24 0 18 0;
-#X connect 25 0 12 0;
-#X connect 26 0 28 0;
-#X connect 27 0 26 0;
-#X connect 29 0 30 0;
-#X connect 30 0 26 0;
-#X connect 32 0 29 0;
-#X connect 34 0 29 0;
+#X connect 4 0 5 0;
+#X connect 9 0 4 0;
+#X connect 10 0 15 0;
+#X connect 14 0 10 0;
+#X connect 16 0 17 0;
+#X connect 17 0 10 0;
+#X connect 21 0 23 0;
+#X connect 22 0 16 0;
+#X connect 23 0 10 0;
+#X connect 24 0 26 0;
+#X connect 25 0 24 0;
+#X connect 27 0 28 0;
+#X connect 28 0 24 0;
+#X connect 30 0 27 0;
+#X connect 32 0 27 0;
+#X connect 34 0 4 1;
+#X connect 35 0 4 1;
 #X restore 119 394 pd multiple programs;
 #X obj 396 117 s \$0-execScript;
-#N canvas 0 30 750 854 array 0;
+#N canvas 0 30 1598 543 array 0;
 #X obj 88 298 outlet;
 #X text 46 64 AddA ( a b1 b2 ... ) calculates (a+b1) (a+b2) ...;
 #X text 68 88 (analogeous for MulA \, ... );
