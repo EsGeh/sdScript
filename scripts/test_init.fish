@@ -16,14 +16,6 @@ source $SCRIPTS_DIR/utils/cmd_args.fish
 
 set doc_dir $BASE_DIR/doc
 
-set build_dir $doc_dir/build
-
-# where to install:
-set install $doc_dir/install
-set install_legacy $doc_dir/install_legacy
-
-set cmds build install
-
 #################################################
 # functions
 #################################################
@@ -46,10 +38,17 @@ if test (count $argv) != 0
 	set cmds $argv
 end
 
-mkdir -pv $build_dir
+mkdir -pv $doc_dir
 
 and begin
-	set cmd "$SCRIPTS_DIR/build.fish --prefix '$install' --build-dir '$build_dir' build install"
+	set cmd "$SCRIPTS_DIR/build.fish --prefix '$doc_dir' build install"
+	echo "executing: '$cmd'"
+	eval "$cmd"
+end
+# replace copies with links:
+and begin
+	and rm $doc_dir/*.pd
+	set cmd "$SCRIPTS_DIR/utils/install_only_abstractions.fish --source '$BASE_DIR/pd_objs' --dest '$doc_dir' --link"
 	echo "executing: '$cmd'"
 	eval "$cmd"
 end

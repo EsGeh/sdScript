@@ -16,13 +16,8 @@ datadir = $(prefix)
 
 # list of all products:
 lib_LTLIBRARIES = sdScript.la
-# data_DATA = \
-# 	$(PATH_PD_OBJS)/sdAnyBang.pd \
-# 	$(PATH_PD_OBJS)/sdFloatBang.pd \
-# 	$(PATH_PD_OBJS)/sdSymbolBang.pd \
-# 	$(PATH_PD_OBJS)/sdExampleObj.pd \
-# 	$(PATH_PD_OBJS)/sdObjSaveAll.pd \
-# 	$(PATH_PD_OBJS)/sdObjState_ui.pd 
+data_DATA = \
+	$(PATH_PD_OBJS)/sdScript-help.pd
 
 sdScript_la_SOURCES = \
   $(PATH_CODE)/sdScript.c $(PATH_CODE)/sdScript.h \

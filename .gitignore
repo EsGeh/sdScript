@@ -1,8 +1,7 @@
-/dependencies
-/build
+/dependencies/
+/build/
 /build-aux
-/doc/build
-/doc/install
+/doc/
 
 # http://www.gnu.org/software/automake
 
