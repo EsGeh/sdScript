@@ -2,7 +2,7 @@
 #define _FUNCTION_
 
 #include "Global.h"
-#include "m_pd.h"
+#include "DynArray.h"
 
 typedef struct _script_obj t_script_obj;
 typedef struct SRuntimeData t_rt;
@@ -31,8 +31,8 @@ typedef struct SFunctionInfo {
 	POperatorFunction pFunc;
 } FunctionInfo;
 
-DECL_DYN_ARRAY(OutputBuf,t_atom)
-DEF_DYN_ARRAY(OutputBuf,t_atom)
+DECL_DYN_ARRAY(OutputBuf,t_atom,getbytes,freebytes)
+DEF_DYN_ARRAY(OutputBuf,t_atom,getbytes,freebytes)
 
 void functions_init();
 //void functions_exit();

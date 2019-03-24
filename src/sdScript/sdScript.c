@@ -1,7 +1,5 @@
 #include "sdScript.h"
 
-#include "Function.h"
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -216,7 +214,7 @@ void* t_script_obj_init(
 
 	Programs_init( & x->programs, PROGRAMS_HASH_SIZE );
 	x->symbol_table = symtab_init();
-	ProgStackInit( & x-> program_stack );
+	ProgStack_init( & x-> program_stack );
 	OutputBuf_init( & x->output_buffer );
 
 	x -> jump_to_program = NULL;
@@ -265,7 +263,7 @@ void t_script_obj_exit(
 		clock_free( pThis -> clock );
 
 	DB_PRINT("removing sgScript object...");
-	ProgStackExit( & pThis-> program_stack );
+	ProgStack_exit( & pThis-> program_stack );
 	Programs_exit( & pThis->programs );
 	symtab_exit( pThis -> symbol_table );
 
@@ -409,10 +407,10 @@ void script_obj_on_exec(
 	}
 	// if some program is still loaded, clean it up:
 	if(
-			ProgStackGetSize( & pThis -> program_stack )
+			ProgStack_get_size( & pThis -> program_stack )
 	)
 	{
-		ProgStackClear( & pThis -> program_stack );
+		ProgStack_clear( & pThis -> program_stack );
 		clock_unset( pThis -> clock );
 	}
 
@@ -444,8 +442,8 @@ RuntimeData* script_obj_init_prog(
 
 	RuntimeData* rt = getbytes( sizeof( RuntimeData ) );
 
-	ListAtomInit( & rt -> stack );
-	ListCommandInit( & rt -> command_stack  );
+	ListAtom_init( & rt -> stack );
+	ListCommand_init( & rt -> command_stack  );
 	Scope* scope =
 		symtab_add_scope(
 				this -> symbol_table,
@@ -465,7 +463,7 @@ RuntimeData* script_obj_init_prog(
 
 		.script_obj = this
 	};
-	ProgStackAdd(
+	ProgStack_append(
 			& this->program_stack,
 			rt
 	);
@@ -486,7 +484,7 @@ void script_obj_exec_current(
 			(
 			 this->delay == 0
 			 &&
-			 ProgStackGetSize( & this-> program_stack ) != 0
+			 ProgStack_get_size( & this-> program_stack ) != 0
 			)
 		)
 		*/
@@ -513,7 +511,7 @@ void script_obj_exec_current(
 		}
 
 		// load current program:
-		ProgStackEl* last_prog_el = ProgStackGetLast(
+		ProgStackEl* last_prog_el = ProgStack_get_last(
 				& this-> program_stack
 		);
 		RuntimeData* rt = last_prog_el -> pData;
@@ -576,7 +574,7 @@ void script_obj_exec_current(
 							rt -> countParenthesisRightIgnore = 1;
 						}
 					}
-					else if( ListCommandGetSize( & rt->command_stack ) )
+					else if( ListCommand_get_size( & rt->command_stack ) )
 					{
 						utils_pop_cmd_and_exec( rt );
 					}
@@ -641,7 +639,7 @@ void script_obj_exec_current(
 				DB_PRINT( "program freed before jump: '%s'", buf );
 			}
 			// the program has finished, so we clean it up:
-			ProgStackDel(
+			ProgStack_del(
 					& this -> program_stack,
 					last_prog_el
 			);
@@ -654,7 +652,7 @@ void script_obj_exec_current(
 			(
 			 this->delay == 0
 			 &&
-			 ProgStackGetSize( & this-> program_stack ) != 0
+			 ProgStack_get_size( & this-> program_stack ) != 0
 			)
 	);
 }
@@ -670,9 +668,9 @@ void utils_push_cmd(
 	// add the function to the command stack:
 	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
 	pCurrentCommandInfo -> stackHeight0 =
-		ListAtomGetSize ( & rt -> stack );
+		ListAtom_get_size ( & rt -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
-	ListCommandAdd (
+	ListCommand_append (
 			& rt->command_stack,
 			pCurrentCommandInfo
 	);
@@ -683,10 +681,10 @@ void utils_pop_cmd_and_exec(
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast( & rt->command_stack );
+		ListCommand_get_last( & rt->command_stack );
 	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
 	t_int paramCount =
-		ListAtomGetSize ( & rt -> stack )
+		ListAtom_get_size ( & rt -> stack )
 		- pElCurrentFunction -> pData -> stackHeight0
 	;
 	if(
@@ -700,7 +698,7 @@ void utils_pop_cmd_and_exec(
 				pFunctionInfo,
 				paramCount
 		);
-		pElCurrentFunction = ListCommandGetLast ( & rt -> command_stack );
+		pElCurrentFunction = ListCommand_get_last ( & rt -> command_stack );
 	}
 	else
 	{
@@ -710,7 +708,7 @@ void utils_pop_cmd_and_exec(
 	}
 
 	//delete the function from Stack, because it has been executed:
-	ListCommandDel( & rt -> command_stack, pElCurrentFunction);
+	ListCommand_del( & rt -> command_stack, pElCurrentFunction);
 	utils_try_to_exec_immediately(
 			rt
 	);
@@ -724,7 +722,7 @@ void utils_push_value(
 	// put value on stack:
 	t_atom* pValue = getbytes(sizeof(t_atom));
 	*pValue = *pCurrentToken;
-	ListAtomAdd( & rt -> stack, pValue);
+	ListAtom_append( & rt -> stack, pValue);
 }
 
 BOOL utils_is_value(t_atom* pToken)
@@ -744,18 +742,18 @@ void utils_call_function(
 	// first copy params:
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
-		ElementAtom* pElOpNext = ListAtomGetLast( & rt -> stack);
+		ElementAtom* pElOpNext = ListAtom_get_last( & rt -> stack);
 		for ( int i=countParam-1; i>=0; i--)
 		{
 			pArgs[i] = *(pElOpNext-> pData);
-			pElOpNext = ListAtomGetPrev( & rt -> stack, pElOpNext);
+			pElOpNext = ListAtom_get_prev( & rt -> stack, pElOpNext);
 		}
 	}
 	// ... delete them from stack
 	for ( int i=0; i<countParam; i++)
 	{
-		ElementAtom* pElParam = ListAtomGetLast ( & rt -> stack );
-		ListAtomDel( & rt -> stack, pElParam );
+		ElementAtom* pElParam = ListAtom_get_last ( & rt -> stack );
+		ListAtom_del( & rt -> stack, pElParam );
 	}
 
 	char buf[256];
@@ -776,7 +774,7 @@ void utils_try_to_exec_immediately(
 )
 {
 	ElementCommand* pElCurrentFunction =
-		ListCommandGetLast ( & rt -> command_stack );
+		ListCommand_get_last ( & rt -> command_stack );
 	if( !pElCurrentFunction )
 		return ;
 	// if the topmost command is a dont-read-all-parameters-command:
@@ -786,7 +784,7 @@ void utils_try_to_exec_immediately(
 		FunctionInfo* pFunctionInfo = pElCurrentFunction->pData -> pFunctionInfo;
 		// check if there are enough values on stack now to call the next function
 		t_int paramCount =
-			ListAtomGetSize ( & rt -> stack )
+			ListAtom_get_size ( & rt -> stack )
 			- pElCurrentFunction -> pData -> stackHeight0
 		;
 		if( paramCount== pFunctionInfo -> executeAfter )
@@ -799,7 +797,7 @@ void utils_try_to_exec_immediately(
 			atom_string(& pFunctionInfo->name, buf, 256);
 			post("ERROR: wrong number of parameters for %s", buf);
 		}
-		ListCommandDel( & rt -> command_stack, pElCurrentFunction);
+		ListCommand_del( & rt -> command_stack, pElCurrentFunction);
 	}
 }
 
@@ -845,5 +843,5 @@ TokenFits lexer_consumeNextToken(
 )
 {
 	t_atom* pNextToken = lexer_pop( rt );
-	return compareAtoms(pNextToken, pExpectedSym );
+	return compareAtoms( pNextToken, pExpectedSym );
 }

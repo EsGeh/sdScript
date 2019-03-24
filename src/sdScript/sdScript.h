@@ -2,7 +2,6 @@
 #define _SDSCRIPT_H
 
 #include "Global.h"
-#include "LinkedList.h"
 #include "SymbolTable.h"
 #include "Function.h"
 #include "Map.h"
@@ -24,11 +23,11 @@ typedef t_atom Command;
 DECL_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes)
 DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
 
-DECL_BUFFER(CommandBuf,CommandInfo)
-DEF_BUFFER(CommandBuf,CommandInfo)
+DECL_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
+DEF_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
 
-DECL_BUFFER(TokenBuf, t_atom)
-DEF_BUFFER(TokenBuf, t_atom)
+DECL_BUFFER(TokenBuf, t_atom,getbytes,freebytes)
+DEF_BUFFER(TokenBuf, t_atom,getbytes,freebytes)
 
 
 #define DEL_PROG( prog, size ) \
@@ -104,8 +103,8 @@ struct _script_obj {
 
 INLINE void DEL_RT(RuntimeData* rt, int size)
 {
-	ListAtomExit(  & rt -> stack );
-	ListCommandExit( & rt -> command_stack );
+	ListAtom_exit(  & rt -> stack );
+	ListCommand_exit( & rt -> command_stack );
 	symtab_del_scope(
 			rt -> script_obj -> symbol_table,
 			rt -> current_prog_name

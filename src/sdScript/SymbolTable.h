@@ -2,14 +2,15 @@
 #define _SYMBOLTABLE_H_ 
 
 #include "Global.h"
+#include "DynArray.h"
 #include "Map.h"
 
 #define VARS_HASH_SIZE 1024
 #define SCOPES_HASH_SIZE 1024
 
 
-DECL_DYN_ARRAY(Atoms,t_atom)
-DEF_DYN_ARRAY(Atoms,t_atom)
+DECL_DYN_ARRAY(Atoms,t_atom,getbytes,freebytes)
+DEF_DYN_ARRAY(Atoms,t_atom,getbytes,freebytes)
 
 #define DEL_VAR(var,size) \
 	Atoms_exit( var ); \

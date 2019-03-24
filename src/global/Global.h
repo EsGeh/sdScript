@@ -5,6 +5,15 @@
 #include "LinkedList.h"
 
 
+#include "m_pd.h"
+
+#ifndef DEBUG
+	#define DB_PRINT(message, ...)
+#else
+	#define DB_PRINT(message, ...)\
+	post(message, ## __VA_ARGS__)
+#endif
+
 DECL_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes)
 DEF_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes);
 
@@ -13,5 +22,34 @@ DEF_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes);
 DECL_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,)
 DEF_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,);
 #pragma GCC diagnostic pop
+
+
+INLINE int compareAtoms(t_atom* atoml, t_atom* atomr)
+{
+	if(atoml -> a_type == A_SYMBOL)
+	{
+		if(atomr -> a_type == A_SYMBOL)
+		{
+			return atom_getsymbol( atoml ) == atom_getsymbol( atomr );
+		}
+	}
+	else
+	{
+		if(atomr -> a_type == A_FLOAT)
+		{
+			return atom_getfloat(atoml)==atom_getfloat(atomr);
+		}
+	}
+	return 0;
+}
+
+INLINE BOOL atomEqualsString(t_atom* pAtom, char* string)
+{
+	char buf[256];
+	atom_string(pAtom,buf,256);
+	if(!strncmp(buf,string,256))
+		return TRUE;
+	return FALSE;
+}
 
 #endif
