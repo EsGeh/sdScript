@@ -4,8 +4,7 @@
 #include "Global.h"
 #include "DynArray.h"
 
-typedef struct _script_obj t_script_obj;
-typedef struct SRuntimeData t_rt;
+typedef struct SProgramRTInfo t_rt;
 
 typedef void (*POperatorFunction) (t_rt* pThis, t_int countParam, t_atom* pArgs);
 
@@ -34,12 +33,24 @@ typedef struct SFunctionInfo {
 DECL_DYN_ARRAY(OutputBuf,t_atom,getbytes,freebytes)
 DEF_DYN_ARRAY(OutputBuf,t_atom,getbytes,freebytes)
 
-void functions_init();
-//void functions_exit();
+DECL_DYN_ARRAY(FunctionInfos, FunctionInfo,getbytes,freebytes)
+DEF_DYN_ARRAY(FunctionInfos, FunctionInfo,getbytes,freebytes)
 
-FunctionInfo* getFunctionInfo(t_atom* pName);
+FunctionInfos* functions_init();
+void functions_exit(
+		FunctionInfos* x
+);
 
-FunctionInfo* get_NOP();
-FunctionInfo* get_RETURN_ALL();
+FunctionInfo* getFunctionInfo(
+		FunctionInfos* function_infos,
+		t_atom* pName
+);
+
+FunctionInfo* get_NOP(
+		FunctionInfos* function_infos
+);
+FunctionInfo* get_RETURN_ALL(
+		FunctionInfos* function_infos
+);
 
 #endif 

@@ -56,7 +56,7 @@ void symtab_del_scope(
 	);
 }
 
-Atoms* symtab_get_value(
+AtomDynA* symtab_get_value(
 		Scope* scope,
 		t_symbol* name
 )

@@ -1,4 +1,4 @@
-#ifndef _SDSCRIPT_H
+#ifndef _SDSCRIPT_H_
 #define _SDSCRIPT_H
 
 #include "Global.h"
@@ -8,8 +8,14 @@
 
 #include "m_pd.h"
 
+/*
+	Stmts 	-> 	Stmt Stmts | eps
+	Stmt 	->	func ( Stmts )
+		|	proc
+		|	value
+		|	var
+*/
 
-void sdScript_setup();
 
 // information kept during runtime for each function:
 typedef struct SCommandInfo {
@@ -17,32 +23,34 @@ typedef struct SCommandInfo {
 	FunctionInfo* pFunctionInfo;
 } CommandInfo;
 
-// predeclarations
-typedef t_atom Command;
-
 DECL_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes)
 DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
 
 DECL_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
 DEF_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
 
-DECL_BUFFER(TokenBuf, t_atom,getbytes,freebytes)
-DEF_BUFFER(TokenBuf, t_atom,getbytes,freebytes)
+DECL_BUFFER(AtomBuf, t_atom,getbytes,freebytes)
+DEF_BUFFER(AtomBuf, t_atom,getbytes,freebytes)
 
 
 #define DEL_PROG( prog, size ) \
-		TokenBuf_exit( prog ); \
+		AtomBuf_exit( prog ); \
 		freebytes( prog, size )
 
 #define PROGS_HASH(sym) ((unsigned int ) sym)
-DECL_MAP(Programs,t_symbol*,TokenBuf,getbytes,freebytes,DEL_PROG,PROGS_HASH)
-DEF_MAP(Programs,t_symbol*,TokenBuf,getbytes,freebytes,DEL_PROG,PROGS_HASH)
 
-typedef CommandBuf Program;
+// program name -> cmds ...
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+DECL_MAP(ProgramMap,t_symbol*,AtomBuf,getbytes,freebytes,DEL_PROG,PROGS_HASH)
+DEF_MAP(ProgramMap,t_symbol*,AtomBuf,getbytes,freebytes,DEL_PROG,PROGS_HASH)
+#pragma GCC diagnostic pop
 
-typedef struct SRuntimeData {
+struct SScriptData;
+
+typedef struct SProgramRTInfo {
 	t_symbol* current_prog_name;
-	TokenBuf* current_prog;
+	AtomBuf* current_prog;
 
 	Scope* scope;
 	Scope* global_scope;
@@ -59,33 +67,27 @@ typedef struct SRuntimeData {
 	// skip mode (default FALSE):
 	BOOL skipMode;
 
-	t_script_obj* script_obj;
-} RuntimeData;
+	struct SScriptData* rt;
+} ProgramRTInfo;
 
-DECL_LIST( ProgStack, ProgStackEl, RuntimeData, getbytes, freebytes, DEL_RT );
+DECL_LIST( ProgStack, ProgStackEl, ProgramRTInfo, getbytes, freebytes, DEL_RT );
 
+typedef struct SScriptData
+{
 
-struct _script_obj {
-	//internal obj information:
-	t_object obj;
-	t_outlet* pOutlet;
+	// program name -> cmds ...
+	ProgramMap* programs;
 
-	//symbol table
+	// program  name -> Scope
 	SymbolTable* symbol_table;
 
+	// global scope for all programs
 	Scope global_scope;
 
-	// programs
-	Programs programs;
+	FunctionInfos* function_infos;
 
 	// while running: stores the execution state
 	ProgStack program_stack;
-
-	/* programs can set this variable
-	 * in order to pause themself
-	 * for a number of ms
-	 */
-	double delay;
 
 	/* programs can set this variable
 	 * in order to jump into another
@@ -93,32 +95,61 @@ struct _script_obj {
 	 */
 	t_symbol* jump_to_program;
 
-	// output buffer:
-	OutputBuf output_buffer;
+	/* programs can set this variable
+	 * in order to pause themself
+	 * for a number of ms
+	 */
+	double delay;
 
 	// clock needed for the "Delay" command:
 	t_clock *clock;
-};
 
+	// output buffer:
+	OutputBuf output_buffer;
 
-INLINE void DEL_RT(RuntimeData* rt, int size)
+	t_outlet* outlet;
+	//void (*output)( int argc, t_atom* argv );
+
+	t_atom leftParenthesis, rightParenthesis, escapeBegin, escapeEnd;
+
+} ScriptData;
+
+void Script_init(
+		ScriptData* rt,
+		ProgramMap* programs, // program name -> cmds ...
+		t_outlet* outlet,
+		t_clock* clock
+);
+
+void Script_exit(
+		ScriptData* rt
+);
+
+Scope* Script_get_global_scope(
+		ScriptData* rt
+);
+
+void Script_exec(
+	ScriptData* rt,
+	t_symbol* prog_name
+);
+
+// continue after the program has been paused ...:
+void Script_continue(
+	ScriptData* rt
+);
+
+INLINE void DEL_RT(ProgramRTInfo* prog_rt, int size)
 {
-	ListAtom_exit(  & rt -> stack );
-	ListCommand_exit( & rt -> command_stack );
+	ListAtom_exit(  & prog_rt -> stack );
+	ListCommand_exit( & prog_rt -> command_stack );
 	symtab_del_scope(
-			rt -> script_obj -> symbol_table,
-			rt -> current_prog_name
+			prog_rt -> rt -> symbol_table,
+			prog_rt -> current_prog_name
 	);
-	freebytes( rt, size );
+	freebytes( prog_rt, size );
 }
 
-DEF_LIST( ProgStack, ProgStackEl, RuntimeData, getbytes, freebytes, DEL_RT );
-
-void sdScript_output(
-	t_script_obj* pThis,
-	t_symbol* selector,
-	int argc,
-	t_atom* argv
-);
+DEF_LIST( ProgStack, ProgStackEl, ProgramRTInfo, getbytes, freebytes, DEL_RT );
 
 #endif 
