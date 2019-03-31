@@ -9,9 +9,6 @@
 #define SCOPES_HASH_SIZE 1024
 
 
-DECL_DYN_ARRAY(AtomDynA,t_atom,getbytes,freebytes)
-DEF_DYN_ARRAY(AtomDynA,t_atom,getbytes,freebytes)
-
 #define DEL_VAR(var,size) \
 	AtomDynA_exit( var ); \
 	freebytes( var, size )

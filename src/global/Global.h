@@ -3,6 +3,7 @@
 
 #include "Basic.h"
 #include "LinkedList.h"
+#include "DynArray.h"
 
 
 #include "m_pd.h"
@@ -14,14 +15,20 @@
 	post(message, ## __VA_ARGS__)
 #endif
 
-DECL_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes)
-DEF_LIST(ListAtom,ElementAtom,t_atom,getbytes,freebytes,freebytes);
+DECL_LIST(AtomList,ElementAtom,t_atom,getbytes,freebytes,freebytes)
+DEF_LIST(AtomList,ElementAtom,t_atom,getbytes,freebytes,freebytes);
 
 // pointers to atoms are considered references, therefore not deleted automatically:
 #pragma GCC diagnostic ignored "-Wunused-value"
-DECL_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,)
-DEF_LIST(ListAtomPointer,ElementAtomPointer,t_atom,getbytes,freebytes,);
+DECL_LIST(AtomPointerList,ElementAtomPointer,t_atom,getbytes,freebytes,)
+DEF_LIST(AtomPointerList,ElementAtomPointer,t_atom,getbytes,freebytes,);
 #pragma GCC diagnostic pop
+
+DECL_DYN_ARRAY(AtomDynA,t_atom,getbytes,freebytes)
+DEF_DYN_ARRAY(AtomDynA,t_atom,getbytes,freebytes)
+
+DECL_BUFFER(AtomBuf,t_atom,getbytes,freebytes)
+DEF_BUFFER(AtomBuf,t_atom,getbytes,freebytes)
 
 
 INLINE int compareAtoms(t_atom* atoml, t_atom* atomr)

@@ -352,7 +352,7 @@ ProgramRTInfo* init_prog(
 
 	ProgramRTInfo* prog_rt = getbytes( sizeof( ProgramRTInfo ) );
 
-	ListAtom_init( & prog_rt -> stack );
+	AtomList_init( & prog_rt -> stack );
 	ListCommand_init( & prog_rt -> command_stack  );
 	Scope* scope =
 		symtab_add_scope(
@@ -391,7 +391,7 @@ void utils_push_cmd(
 	// add the function to the command stack:
 	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
 	pCurrentCommandInfo -> stackHeight0 =
-		ListAtom_get_size ( & rt -> stack );
+		AtomList_get_size ( & rt -> stack );
 	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
 	ListCommand_append (
 			& rt->command_stack,
@@ -407,7 +407,7 @@ void utils_pop_cmd_and_exec(
 		ListCommand_get_last( & rt->command_stack );
 	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
 	t_int paramCount =
-		ListAtom_get_size ( & rt -> stack )
+		AtomList_get_size ( & rt -> stack )
 		- pElCurrentFunction -> pData -> stackHeight0
 	;
 	if(
@@ -445,7 +445,7 @@ void utils_push_value(
 	// put value on stack:
 	t_atom* pValue = getbytes(sizeof(t_atom));
 	*pValue = *pCurrentToken;
-	ListAtom_append( & rt -> stack, pValue);
+	AtomList_append( & rt -> stack, pValue);
 }
 
 BOOL utils_is_value(t_atom* pToken)
@@ -465,18 +465,18 @@ void utils_call_function(
 	// first copy params:
 	t_atom* pArgs = getbytes( sizeof(t_atom )* countParam);
 	{
-		ElementAtom* pElOpNext = ListAtom_get_last( & rt -> stack);
+		ElementAtom* pElOpNext = AtomList_get_last( & rt -> stack);
 		for ( int i=countParam-1; i>=0; i--)
 		{
 			pArgs[i] = *(pElOpNext-> pData);
-			pElOpNext = ListAtom_get_prev( & rt -> stack, pElOpNext);
+			pElOpNext = AtomList_get_prev( & rt -> stack, pElOpNext);
 		}
 	}
 	// ... delete them from stack
 	for ( int i=0; i<countParam; i++)
 	{
-		ElementAtom* pElParam = ListAtom_get_last ( & rt -> stack );
-		ListAtom_del( & rt -> stack, pElParam );
+		ElementAtom* pElParam = AtomList_get_last ( & rt -> stack );
+		AtomList_del( & rt -> stack, pElParam );
 	}
 
 	char buf[256];
@@ -507,7 +507,7 @@ void utils_try_to_exec_immediately(
 		FunctionInfo* pFunctionInfo = pElCurrentFunction->pData -> pFunctionInfo;
 		// check if there are enough values on stack now to call the next function
 		t_int paramCount =
-			ListAtom_get_size ( & rt -> stack )
+			AtomList_get_size ( & rt -> stack )
 			- pElCurrentFunction -> pData -> stackHeight0
 		;
 		if( paramCount== pFunctionInfo -> executeAfter )

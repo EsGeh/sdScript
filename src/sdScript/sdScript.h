@@ -29,10 +29,6 @@ DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
 DECL_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
 DEF_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
 
-DECL_BUFFER(AtomBuf, t_atom,getbytes,freebytes)
-DEF_BUFFER(AtomBuf, t_atom,getbytes,freebytes)
-
-
 #define DEL_PROG( prog, size ) \
 		AtomBuf_exit( prog ); \
 		freebytes( prog, size )
@@ -56,7 +52,7 @@ typedef struct SProgramRTInfo {
 	Scope* global_scope;
 
 	// return stack
-	ListAtom stack;
+	AtomList stack;
 	// CommandStack:
 	ListCommand command_stack;
 	// instruction pointer
@@ -141,7 +137,7 @@ void Script_continue(
 
 INLINE void DEL_RT(ProgramRTInfo* prog_rt, int size)
 {
-	ListAtom_exit(  & prog_rt -> stack );
+	AtomList_exit(  & prog_rt -> stack );
 	ListCommand_exit( & prog_rt -> command_stack );
 	symtab_del_scope(
 			prog_rt -> rt -> symbol_table,

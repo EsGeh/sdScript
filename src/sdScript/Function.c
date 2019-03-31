@@ -277,7 +277,7 @@ PFUNCTION_HEADER( add )
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, atom_getfloat(& pArgs[0]) + atom_getfloat(& pArgs[1]));
 	//push result on stack:
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 
@@ -287,7 +287,7 @@ PFUNCTION_HEADER( sub )
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, atom_getfloat(&pArgs[0]) - atom_getfloat(&pArgs[1]));
 	//push result on stack:
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( mul )
 {
@@ -295,7 +295,7 @@ PFUNCTION_HEADER( mul )
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, atom_getfloat(&pArgs[0]) * atom_getfloat(& pArgs[1]));
 	//push result on stack:
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( div_ )
 {
@@ -303,7 +303,7 @@ PFUNCTION_HEADER( div_ )
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, atom_getfloat(&pArgs[0]) / atom_getfloat(& pArgs[1]));
 	//push result on stack:
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( mod )
 {
@@ -311,7 +311,7 @@ PFUNCTION_HEADER( mod )
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, (t_int )atom_getfloat(&pArgs[0]) % (t_int )atom_getfloat(& pArgs[1]));
 	//push result on stack:
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 PFUNCTION_HEADER( print )
@@ -336,11 +336,11 @@ PFUNCTION_HEADER( pack )
 		pResult[2+i] = getbytes( sizeof(t_atom) );
 		* pResult[2+i] = pArgs[i+1];
 	}
-	ListAtom_append( & prog_rt -> stack, pResult[0]);
-	ListAtom_append( & prog_rt -> stack, pResult[1]);
+	AtomList_append( & prog_rt -> stack, pResult[0]);
+	AtomList_append( & prog_rt -> stack, pResult[1]);
 	for(int i=0; i< countArgs-1; i++)
 	{
-		ListAtom_append( & prog_rt -> stack, pResult[2+i]);
+		AtomList_append( & prog_rt -> stack, pResult[2+i]);
 	}
 	freebytes( pResult, sizeof(t_atom* ) * (countArgs+2));
 }
@@ -446,7 +446,7 @@ PFUNCTION_HEADER( getVar )
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = AtomDynA_get_array( value )[i];
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 
@@ -481,7 +481,7 @@ PFUNCTION_HEADER( getVarA )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	(*pResult) = AtomDynA_get_array( value )[index];
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 PFUNCTION_HEADER( setVar )
@@ -591,7 +591,7 @@ PFUNCTION_HEADER( if_ )
 	if( atom_getfloat(& pArgs[0]) )
 	{
 		CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
-		pCurrentCommandInfo -> stackHeight0 = ListAtom_get_size ( & prog_rt -> stack );
+		pCurrentCommandInfo -> stackHeight0 = AtomList_get_size ( & prog_rt -> stack );
 		pCurrentCommandInfo -> pFunctionInfo = get_RETURN_ALL(
 				prog_rt -> rt -> function_infos
 		);
@@ -612,7 +612,7 @@ PFUNCTION_HEADER( sgFunc )
 	t_float c = atom_getfloat( & pArgs[3] );
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, c + stepAdd/2 * x*x + ( step0 - stepAdd/2 ) * x );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( sgScale )
 {
@@ -625,7 +625,7 @@ PFUNCTION_HEADER( sgScale )
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, c + stepAdd/2 * i*i + ( step0 - stepAdd/2 ) * i );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 
@@ -637,7 +637,7 @@ PFUNCTION_HEADER( and_ )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a && b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( or_ )
 {
@@ -646,7 +646,7 @@ PFUNCTION_HEADER( or_ )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a || b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( not_ )
 {
@@ -654,7 +654,7 @@ PFUNCTION_HEADER( not_ )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, ! a );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 // comparison operators:
@@ -665,7 +665,7 @@ PFUNCTION_HEADER( isEqual )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a == b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( isNotEqual )
 {
@@ -674,7 +674,7 @@ PFUNCTION_HEADER( isNotEqual )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a != b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 
 }
 PFUNCTION_HEADER( isLessThan )
@@ -684,7 +684,7 @@ PFUNCTION_HEADER( isLessThan )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a < b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( isGreaterThan )
 {
@@ -693,7 +693,7 @@ PFUNCTION_HEADER( isGreaterThan )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a > b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( isLessOrEqual )
 {
@@ -702,7 +702,7 @@ PFUNCTION_HEADER( isLessOrEqual )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a <= b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( isGreaterOrEqual )
 {
@@ -711,7 +711,7 @@ PFUNCTION_HEADER( isGreaterOrEqual )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, a >= b );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 typedef enum ESetOp { UNION, MINUS } SetOp;
@@ -721,7 +721,7 @@ BOOL AtomListCompareAtoms(t_atom* pInList, t_atom* p)
 	return compareAtoms(pInList, p);
 }
 BOOL setContains(t_int count, t_atom* set, t_atom* element);
-BOOL listContains(ListAtom* pList, t_atom* pElement);
+BOOL listContains(AtomList* pList, t_atom* pElement);
 
 PFUNCTION_HEADER( setify )
 {
@@ -732,7 +732,7 @@ PFUNCTION_HEADER( setify )
 		{
 			t_atom* pResult = getbytes(sizeof(t_atom));
 			*pResult = *pCurrent;
-			ListAtom_append( & prog_rt -> stack, pResult);
+			AtomList_append( & prog_rt -> stack, pResult);
 		}
 	}
 }
@@ -740,13 +740,13 @@ PFUNCTION_HEADER( card )
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, countArgs );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 PFUNCTION_HEADER( setOp )
 {
-	ListAtom listReturn;
-	ListAtom_init( & listReturn );
+	AtomList listReturn;
+	AtomList_init( & listReturn );
 	// brute force.
 	// a better solution would be to sort both lists, and then to merge them:
 	t_int countFirst = 0;
@@ -772,7 +772,7 @@ PFUNCTION_HEADER( setOp )
 				countFirst ++ ;
 				t_atom* pAdd = getbytes(sizeof(t_atom));
 				(* pAdd) = * pCurrent;
-				ListAtom_append( & listReturn, pAdd );
+				AtomList_append( & listReturn, pAdd );
 			}
 		}
 		else
@@ -785,39 +785,39 @@ PFUNCTION_HEADER( setOp )
 					{
 						t_atom* pAdd = getbytes(sizeof(t_atom));
 						(* pAdd) = * pCurrent;
-						ListAtom_append( & listReturn, pAdd );
+						AtomList_append( & listReturn, pAdd );
 					}
 				break;
 				case MINUS:
-					pElToDelete = ListAtom_get_element( &listReturn, pCurrent, AtomListCompareAtoms);
+					pElToDelete = AtomList_get_element( &listReturn, pCurrent, AtomListCompareAtoms);
 					if( pElToDelete )
 					{
-						ListAtom_del( & listReturn, pElToDelete );
+						AtomList_del( & listReturn, pElToDelete );
 					}
 				break;
 			}
 		}
 	}
-	ElementAtom* pCurrent = ListAtom_get_first( & listReturn );
+	ElementAtom* pCurrent = AtomList_get_first( & listReturn );
 	while ( pCurrent )
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = (* pCurrent -> pData);
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 		
-		pCurrent = ListAtom_get_next( & listReturn, pCurrent );
+		pCurrent = AtomList_get_next( & listReturn, pCurrent );
 	}
-	ListAtom_exit( & listReturn );
+	AtomList_exit( & listReturn );
 }
 
-BOOL listContains(ListAtom* pList, t_atom* pElement)
+BOOL listContains(AtomList* pList, t_atom* pElement)
 {
-	ElementAtom* pElCurrent = ListAtom_get_first( pList );
+	ElementAtom* pElCurrent = AtomList_get_first( pList );
 	while( pElCurrent )
 	{
 		if( atom_getfloat( pElCurrent->pData) == atom_getfloat( pElement ) )
 			return TRUE;
-		pElCurrent = ListAtom_get_next( pList, pElCurrent );
+		pElCurrent = AtomList_get_next( pList, pElCurrent );
 	}
 	return FALSE;
 }
@@ -829,7 +829,7 @@ PFUNCTION_HEADER( contains )
 
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, bRet );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 BOOL setContains(t_int count, t_atom* set, t_atom* element)
@@ -845,8 +845,8 @@ BOOL setContains(t_int count, t_atom* set, t_atom* element)
 PFUNCTION_HEADER( calcTransp )
 {
 	// the sets should be separated by |
-	ListAtom listReturn;
-	ListAtom_init( & listReturn );
+	AtomList listReturn;
+	AtomList_init( & listReturn );
 	// brute force.
 	// a better solution would be to sort both lists, and then to merge them:
 	t_int countFirst = 0;
@@ -883,19 +883,19 @@ PFUNCTION_HEADER( calcTransp )
 		{
 			t_atom* pResult = getbytes(sizeof(t_atom));
 			SETFLOAT( pResult, transp );
-			ListAtom_append( & listReturn, pResult );
+			AtomList_append( & listReturn, pResult );
 		}
 	}
-	ElementAtom* pCurrent = ListAtom_get_first( & listReturn );
+	ElementAtom* pCurrent = AtomList_get_first( & listReturn );
 	while ( pCurrent )
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = (* pCurrent -> pData);
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 		
-		pCurrent = ListAtom_get_next( & listReturn, pCurrent );
+		pCurrent = AtomList_get_next( & listReturn, pCurrent );
 	}
-	ListAtom_exit( & listReturn );
+	AtomList_exit( & listReturn );
 }
 
 PFUNCTION_HEADER( addA )
@@ -911,7 +911,7 @@ PFUNCTION_HEADER( addA )
 		t_atom x = pArgs[i] ;
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, atom_getfloat(&x) + atom_getfloat(&a) );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 PFUNCTION_HEADER( subA )
@@ -927,7 +927,7 @@ PFUNCTION_HEADER( subA )
 		t_atom x = pArgs[i] ;
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, atom_getfloat(&x) - atom_getfloat(&a) );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 PFUNCTION_HEADER( mulA )
@@ -943,7 +943,7 @@ PFUNCTION_HEADER( mulA )
 		t_atom x = pArgs[i] ;
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, atom_getfloat(&x) * atom_getfloat(&a) );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 PFUNCTION_HEADER( divA )
@@ -959,7 +959,7 @@ PFUNCTION_HEADER( divA )
 		t_atom x = pArgs[i] ;
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, atom_getfloat(&x) / atom_getfloat(&a) );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 
@@ -976,7 +976,7 @@ PFUNCTION_HEADER( modA )
 		t_atom x = pArgs[i] ;
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		SETFLOAT( pResult, (t_int )atom_getfloat(&x) % (t_int )atom_getfloat(&m) );
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 
@@ -990,7 +990,7 @@ PFUNCTION_HEADER( sdMinMax )
 		pResult,
 		((pMax) - (pMin)) * (pInput) + (pMin)
 	);
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 // random
@@ -1001,7 +1001,7 @@ PFUNCTION_HEADER( random_ )
 	t_float max = atom_getfloat( & pArgs[1] );
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, min + (rand() % 1000000)/1000000.0 * (max-min) );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 PFUNCTION_HEADER( nop )
@@ -1014,7 +1014,7 @@ PFUNCTION_HEADER( returnAll )
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		*pResult = pArgs[i] ;
-		ListAtom_append( & prog_rt -> stack, pResult);
+		AtomList_append( & prog_rt -> stack, pResult);
 	}
 }
 
@@ -1025,7 +1025,7 @@ PFUNCTION_HEADER( rndInt )
 	t_int max = atom_getfloat( & pArgs[1] );
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	SETFLOAT( pResult, min + (rand() % (max - min + 1) ) );
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 PFUNCTION_HEADER( inc )
 {
@@ -1114,7 +1114,7 @@ PFUNCTION_HEADER( rndIntUnequal )
 			break;
 		}
 	}
-	ListAtom_append( & prog_rt -> stack, pResult);
+	AtomList_append( & prog_rt -> stack, pResult);
 }
 
 
@@ -1122,13 +1122,13 @@ PFUNCTION_HEADER(sdpackType)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	(*pResult) = pArgs[0];
-	ListAtom_append( & prog_rt->stack, pResult);
+	AtomList_append( & prog_rt->stack, pResult);
 }
 PFUNCTION_HEADER(sdpackCount)
 {
 	t_atom* pResult = getbytes(sizeof(t_atom));
 	(*pResult) = pArgs[1];
-	ListAtom_append( & prog_rt->stack, pResult);
+	AtomList_append( & prog_rt->stack, pResult);
 }
 PFUNCTION_HEADER(sdpackParams)
 {
@@ -1137,15 +1137,15 @@ PFUNCTION_HEADER(sdpackParams)
 	{
 		t_atom* pResult = getbytes(sizeof(t_atom));
 		(*pResult) = pArgs[2+i];
-		ListAtom_append( & prog_rt->stack, pResult);
+		AtomList_append( & prog_rt->stack, pResult);
 	}
 }
 
 PFUNCTION_HEADER( sdPackFromHuman )
 {
-	ListAtomPointer stackSizeInfo; // a stack of the atoms with the current packs size
+	AtomPointerList stackSizeInfo; // a stack of the atoms with the current packs size
 	t_int indexNew = 0; // index in the return values
-	ListAtomPointer_init( &stackSizeInfo );
+	AtomPointerList_init( &stackSizeInfo );
 	for( int index=0; index < countArgs; index++ )
 	{
 		t_atom* pCurrent = & pArgs[index];
@@ -1153,18 +1153,18 @@ PFUNCTION_HEADER( sdPackFromHuman )
 		{
 			t_atom* pAtom = getbytes( sizeof(t_atom));
 			SETFLOAT(pAtom, indexNew);
-			ListAtom_append( & prog_rt->stack, pAtom);
+			AtomList_append( & prog_rt->stack, pAtom);
 
-			ListAtomPointer_append( &stackSizeInfo,pAtom);
+			AtomPointerList_append( &stackSizeInfo,pAtom);
 			indexNew ++;
 		}
 		else if( atom_getsymbol(pCurrent) == gensym(")") )
 		{
-			if( ListAtomPointer_get_size( &stackSizeInfo ) > 0 )
+			if( AtomPointerList_get_size( &stackSizeInfo ) > 0 )
 			{
-				ElementAtomPointer* pEl = ListAtomPointer_get_last(&stackSizeInfo);
+				ElementAtomPointer* pEl = AtomPointerList_get_last(&stackSizeInfo);
 				SETFLOAT( pEl->pData, indexNew - atom_getfloat(pEl->pData) -1 );
-				ListAtomPointer_del( &stackSizeInfo, pEl );
+				AtomPointerList_del( &stackSizeInfo, pEl );
 			}
 			else
 			{
@@ -1175,15 +1175,15 @@ PFUNCTION_HEADER( sdPackFromHuman )
 		{
 			t_atom* pAtom = getbytes( sizeof(t_atom));
 			(*pAtom) = pArgs[index] ;
-			ListAtom_append( & prog_rt->stack, pAtom);
+			AtomList_append( & prog_rt->stack, pAtom);
 			indexNew ++;
 		}
 	}
-	if( ListAtomPointer_get_size( &stackSizeInfo ) > 0 )
+	if( AtomPointerList_get_size( &stackSizeInfo ) > 0 )
 	{
 		post("WARNING: sdPackFromHuman: more \"(\" than \")\"!");
 	}
-	ListAtomPointer_exit( &stackSizeInfo );
+	AtomPointerList_exit( &stackSizeInfo );
 }
 
 // sdData (lists of sdPacks):
@@ -1201,7 +1201,7 @@ PFUNCTION_HEADER( sdDataGetPackFromType )
 			{
 				t_atom* pAtom = getbytes( sizeof(t_atom));
 				(*pAtom) = pArgs[i] ;
-				ListAtom_append( & prog_rt->stack, pAtom);
+				AtomList_append( & prog_rt->stack, pAtom);
 			}
 		}
 		pos += (2 + count);
@@ -1221,7 +1221,7 @@ PFUNCTION_HEADER( sdDataGetPackFromTypeRest )
 			{
 				t_atom* pAtom = getbytes( sizeof(t_atom));
 				(*pAtom) = pArgs[i] ;
-				ListAtom_append( & prog_rt->stack, pAtom);
+				AtomList_append( & prog_rt->stack, pAtom);
 			}
 		}
 		pos += (2 + count);
@@ -1238,7 +1238,7 @@ PFUNCTION_HEADER( sdDataGetFirst )
 	{
 		t_atom* pAtom = getbytes( sizeof(t_atom));
 		(*pAtom) = pArgs[i] ;
-		ListAtom_append( & prog_rt->stack, pAtom);
+		AtomList_append( & prog_rt->stack, pAtom);
 	}
 }
 
@@ -1258,7 +1258,7 @@ PFUNCTION_HEADER( sdDataGetRest )
 	{
 		t_atom* pAtom = getbytes( sizeof(t_atom));
 		(*pAtom) = pArgs[pos] ;
-		ListAtom_append( & prog_rt->stack, pAtom);
+		AtomList_append( & prog_rt->stack, pAtom);
 	}
 }
 

@@ -2,7 +2,7 @@
 #define _FUNCTION_
 
 #include "Global.h"
-#include "DynArray.h"
+//#include "DynArray.h"
 
 typedef struct SProgramRTInfo t_rt;
 
