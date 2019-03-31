@@ -17,8 +17,7 @@ typedef void (*POperatorFunction) (t_rt* pThis, t_int countParam, t_atom* pArgs)
 */
 typedef struct SFunctionInfo {
 	t_atom name;
-	t_int paramCount;
-	// -1 means variable
+	t_int paramCount; // -1 means variable
 
 	t_int executeAfter;
 	/* if != -1 this means the function is called after "executeAfter" parameters,

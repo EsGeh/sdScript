@@ -138,6 +138,29 @@ FunctionInfos* functions_init()
 	ADD_FUNCTION("If",&if_,-1,1);
 	ADD_FUNCTION("VarMain",&addMainVar,-1,-1);
 	ADD_FUNCTION("ClearMain",&clearMain,0,-1);
+
+	// nice aliases:
+	ADD_FUNCTION("+",&add,2,-1);
+	ADD_FUNCTION("-",&sub,2,-1);
+	ADD_FUNCTION("*",&mul,2,-1);
+	ADD_FUNCTION("/",&div_,2,-1);
+	ADD_FUNCTION("%",&mod,2,-1);
+	ADD_FUNCTION("$",&getVar,1,-1);
+	ADD_FUNCTION("$[]",&getVarA,2,-1);
+	ADD_FUNCTION("=",&setVar,-1,-1);
+	ADD_FUNCTION("=[]",&setVarA,-1,-1);
+
+	ADD_FUNCTION("#",&card,-1,-1);
+	ADD_FUNCTION("+[]",&addA,-1,-1);
+	ADD_FUNCTION("-[]",&subA,-1,-1);
+	ADD_FUNCTION("*[]",&mulA,-1,-1);
+	ADD_FUNCTION("/[]",&divA,-1,-1);
+	ADD_FUNCTION("%[]",&modA,-1,-1);
+
+	ADD_FUNCTION("+1",&inc,1,-1);
+	ADD_FUNCTION("-1",&dec,1,-1);
+
+
 	// sgScales:
 	// a | b , c , x
 	ADD_FUNCTION("sgFunc",&sgFunc,4,-1);
