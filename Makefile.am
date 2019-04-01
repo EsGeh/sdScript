@@ -23,6 +23,6 @@ sdScript_la_SOURCES = \
 	$(PATH_CODE)/sdScriptObj.c $(PATH_CODE)/sdScriptObj.h \
 	$(PATH_CODE)/sdScript.c $(PATH_CODE)/sdScript.h \
 	$(PATH_CODE)/SymbolTable.c $(PATH_CODE)/SymbolTable.h \
-	$(PATH_CODE)/Function.c $(PATH_CODE)/Function.h
+	$(PATH_CODE)/Commands.c $(PATH_CODE)/Commands.h
 
 sdScript_la_LDFLAGS = -module

@@ -1,4 +1,4 @@
-#include "Function.h"
+#include "Commands.h"
 
 #include "SymbolTable.h"
 #include "LinkedList.h"
@@ -6,8 +6,8 @@
 
 #include <stdlib.h>
 
-FunctionInfo* pNOP;
-FunctionInfo* pRETURN_ALL;
+CommandInfo* pNOP;
+CommandInfo* pRETURN_ALL;
 
 #define PFUNCTION_HEADER(name) \
 void name(t_rt* prog_rt, t_int countArgs, t_atom* pArgs)
@@ -95,7 +95,7 @@ PFUNCTION_HEADER( sdDataGetRest );
 PFUNCTION_HEADER( delay );
 // deletes first pack from a list of sdPacks and returns it
 
-// call an other function as sub routine:
+// call an other command as sub routine:
 PFUNCTION_HEADER( callFunction );
 
 #define ADD_FUNCTION( NAME,PFUNC,PARAMCOUNT,EXECAFTER) \
@@ -103,23 +103,23 @@ PFUNCTION_HEADER( callFunction );
 	t_atom atomName; \
 	SETSYMBOL( &atomName, gensym( NAME ) ); \
  \
-	FunctionInfo func = { \
+	CommandInfo func = { \
 		.name = atomName, \
 		.paramCount = PARAMCOUNT, \
 		.executeAfter = EXECAFTER, \
 		.pFunc = PFUNC \
 	}; \
-	FunctionInfos_append( function_infos, \
+	CommandInfos_append( command_infos, \
 			func \
 	); \
 }
 
 
-FunctionInfos* functions_init()
+CommandInfos* commands_init()
 {
 
-	FunctionInfos* function_infos = getbytes( sizeof( FunctionInfos ) );
-	FunctionInfos_init( function_infos );
+	CommandInfos* command_infos = getbytes( sizeof( CommandInfos ) );
+	CommandInfos_init( command_infos );
 
 	ADD_FUNCTION("NOP",&nop,-1,-1);
 	ADD_FUNCTION("Add",&add,2,-1);
@@ -220,55 +220,55 @@ FunctionInfos* functions_init()
 
 	t_atom atom_temp;
 	SETSYMBOL( &atom_temp, gensym( "NOP" ) );
-	pNOP = getFunctionInfo(
-			function_infos,
+	pNOP = getCommandInfo(
+			command_infos,
 			&atom_temp
 	);
 	SETSYMBOL( &atom_temp, gensym( "RETURN_ALL" ) );
-	pRETURN_ALL = getFunctionInfo(
-			function_infos,
+	pRETURN_ALL = getCommandInfo(
+			command_infos,
 			&atom_temp
 	);
-	return function_infos;
+	return command_infos;
 }
 
-void functions_exit(
-		FunctionInfos* x
+void commands_exit(
+		CommandInfos* x
 )
 {
-	FunctionInfos_exit( x );
-	freebytes( x, sizeof( FunctionInfos ) );
+	CommandInfos_exit( x );
+	freebytes( x, sizeof( CommandInfos ) );
 }
 
-FunctionInfo* getFunctionInfo(
-		FunctionInfos* function_infos,
+CommandInfo* getCommandInfo(
+		CommandInfos* command_infos,
 		t_atom* pName
 )
 {
-	for(int i=0; i<FunctionInfos_get_size( function_infos ); i++)
+	for(int i=0; i<CommandInfos_get_size( command_infos ); i++)
 	{
-		FunctionInfo* current = & FunctionInfos_get_array( function_infos )[i];
+		CommandInfo* current = & CommandInfos_get_array( command_infos )[i];
 		if( compareAtoms( & current->name, pName))
 			return current;
 	}
 	return NULL;
 }
 
-FunctionInfo* get_NOP(
-		FunctionInfos* function_infos
+CommandInfo* get_NOP(
+		CommandInfos* command_infos
 )
 {
 	return pNOP;
 }
-FunctionInfo* get_RETURN_ALL(
-		FunctionInfos* function_infos
+CommandInfo* get_RETURN_ALL(
+		CommandInfos* command_infos
 )
 {
 	return pRETURN_ALL;
 }
 
 /*****************************************
- * function implementations:
+ * command implementations:
  *****************************************/
 
 PFUNCTION_HEADER( add )
@@ -590,12 +590,12 @@ PFUNCTION_HEADER( if_ )
 {
 	if( atom_getfloat(& pArgs[0]) )
 	{
-		CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
-		pCurrentCommandInfo -> stackHeight0 = AtomList_get_size ( & prog_rt -> stack );
-		pCurrentCommandInfo -> pFunctionInfo = get_RETURN_ALL(
-				prog_rt -> rt -> function_infos
+		CmdRuntimeData* pCurrentCmdRuntimeData = getbytes(sizeof(CmdRuntimeData));
+		pCurrentCmdRuntimeData -> stackHeight0 = AtomList_get_size ( & prog_rt -> stack );
+		pCurrentCmdRuntimeData -> pCommandInfo = get_RETURN_ALL(
+				prog_rt -> rt -> command_infos
 		);
-		ListCommand_append( & prog_rt -> command_stack, pCurrentCommandInfo);
+		CommandStack_append( & prog_rt -> command_stack, pCurrentCmdRuntimeData);
 	}
 	else
 	{

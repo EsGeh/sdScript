@@ -15,7 +15,7 @@ ProgramRTInfo* init_prog(
 
 void utils_push_cmd(
 	ProgramRTInfo* rt,
-	FunctionInfo* pFunctionInfo
+	CommandInfo* pCommandInfo
 );
 
 void utils_pop_cmd_and_exec(
@@ -29,10 +29,10 @@ void utils_push_value(
 
 BOOL utils_is_value(t_atom* pToken);
 
-// calls the function that is on the command_stack
-void utils_call_function(
+// calls the command that is on the command_stack
+void utils_call_command(
 		ProgramRTInfo* rt,
-		FunctionInfo* pFunctionInfo,
+		CommandInfo* pCommandInfo,
 		t_int countParam
 );
 
@@ -84,7 +84,7 @@ void Script_init(
 	ProgStack_init( & rt-> program_stack );
 	OutputBuf_init( & rt->output_buffer );
 
-	rt -> function_infos = functions_init();
+	rt -> command_infos = commands_init();
 
 	rt -> jump_to_program = NULL;
 
@@ -109,7 +109,7 @@ void Script_exit(
 
 	OutputBuf_exit( & rt -> output_buffer );
 
-	functions_exit( rt -> function_infos );
+	commands_exit( rt -> command_infos );
 }
 
 
@@ -220,17 +220,17 @@ void Script_continue(
 			}
 			else if( ! prog_rt->escape )
 			{
-				FunctionInfo* pFunctionInfo = getFunctionInfo(
-						rt -> function_infos,
+				CommandInfo* pCommandInfo = getCommandInfo(
+						rt -> command_infos,
 						pCurrentToken
 				);
 				// <Command>
-				if( pFunctionInfo )
+				if( pCommandInfo )
 				{
 					if( ! prog_rt -> skipMode )
 					{
 						DB_PRINT("Is a command");
-						utils_push_cmd( prog_rt, pFunctionInfo);	
+						utils_push_cmd( prog_rt, pCommandInfo);	
 					}
 					// eat the "(" that follows:
 					if( ! lexer_consumeNextToken( prog_rt, & rt->leftParenthesis) )
@@ -253,12 +253,12 @@ void Script_continue(
 							prog_rt -> countParenthesisRightIgnore = 1;
 						}
 					}
-					else if( ListCommand_get_size( & prog_rt->command_stack ) )
+					else if( CommandStack_get_size( & prog_rt->command_stack ) )
 					{
 						utils_pop_cmd_and_exec( prog_rt );
 					}
 					else
-						post("ERROR: ')' found, but no corresponding 'func ('");
+						post("ERROR: ')' found, but no corresponding 'cmd ('");
 				}
 				// <value>
 				else if( ! prog_rt->skipMode )
@@ -271,7 +271,7 @@ void Script_continue(
 					}
 					else
 					{
-						post("ERROR: token is neither function, var, or procedure: '%s'",buf);
+						post("ERROR: token is neither cmd, var, or procedure: '%s'",buf);
 					}
 					utils_try_to_exec_immediately(prog_rt);
 				}
@@ -353,7 +353,7 @@ ProgramRTInfo* init_prog(
 	ProgramRTInfo* prog_rt = getbytes( sizeof( ProgramRTInfo ) );
 
 	AtomList_init( & prog_rt -> stack );
-	ListCommand_init( & prog_rt -> command_stack  );
+	CommandStack_init( & prog_rt -> command_stack  );
 	Scope* scope =
 		symtab_add_scope(
 				rt -> symbol_table,
@@ -385,17 +385,17 @@ ProgramRTInfo* init_prog(
 
 void utils_push_cmd(
 	ProgramRTInfo* rt,
-	FunctionInfo* pFunctionInfo
+	CommandInfo* pCommandInfo
 )
 {
-	// add the function to the command stack:
-	CommandInfo* pCurrentCommandInfo = getbytes(sizeof(CommandInfo));
-	pCurrentCommandInfo -> stackHeight0 =
+	// add the cmd to the command stack:
+	CmdRuntimeData* pCurrentCmdRuntimeData = getbytes(sizeof(CmdRuntimeData));
+	pCurrentCmdRuntimeData -> stackHeight0 =
 		AtomList_get_size ( & rt -> stack );
-	pCurrentCommandInfo -> pFunctionInfo = pFunctionInfo;
-	ListCommand_append (
+	pCurrentCmdRuntimeData -> pCommandInfo = pCommandInfo;
+	CommandStack_append (
 			& rt->command_stack,
-			pCurrentCommandInfo
+			pCurrentCmdRuntimeData
 	);
 }
 
@@ -403,35 +403,35 @@ void utils_pop_cmd_and_exec(
 	ProgramRTInfo* rt
 )
 {
-	ElementCommand* pElCurrentFunction =
-		ListCommand_get_last( & rt->command_stack );
-	FunctionInfo* pFunctionInfo = pElCurrentFunction -> pData -> pFunctionInfo;
+	ElementCommand* pElCurrentCommand =
+		CommandStack_get_last( & rt->command_stack );
+	CommandInfo* pCommandInfo = pElCurrentCommand -> pData -> pCommandInfo;
 	t_int paramCount =
 		AtomList_get_size ( & rt -> stack )
-		- pElCurrentFunction -> pData -> stackHeight0
+		- pElCurrentCommand -> pData -> stackHeight0
 	;
 	if(
-		( pFunctionInfo -> paramCount == -1 )
-		|| ( pFunctionInfo -> paramCount == paramCount )
+		( pCommandInfo -> paramCount == -1 )
+		|| ( pCommandInfo -> paramCount == paramCount )
 	)
 	{
-		// execute the function:
-		utils_call_function(
+		// execute the command:
+		utils_call_command(
 				rt,
-				pFunctionInfo,
+				pCommandInfo,
 				paramCount
 		);
-		pElCurrentFunction = ListCommand_get_last ( & rt -> command_stack );
+		pElCurrentCommand = CommandStack_get_last ( & rt -> command_stack );
 	}
 	else
 	{
 		char buf[256];
-		atom_string( &pFunctionInfo->name, buf, 255 );
-		post("ERROR: wrong number of parameters for function %s", buf);
+		atom_string( &pCommandInfo->name, buf, 255 );
+		post("ERROR: wrong number of parameters for command %s", buf);
 	}
 
-	//delete the function from Stack, because it has been executed:
-	ListCommand_del( & rt -> command_stack, pElCurrentFunction);
+	//delete the command from Stack, because it has been executed:
+	CommandStack_del( & rt -> command_stack, pElCurrentCommand);
 	utils_try_to_exec_immediately(
 			rt
 	);
@@ -455,10 +455,10 @@ BOOL utils_is_value(t_atom* pToken)
 	return TRUE;
 }
 
-// calls the function that is on the command_stack
-void utils_call_function(
+// calls the command that is on the command_stack
+void utils_call_command(
 	ProgramRTInfo* rt,
-	FunctionInfo* pFunctionInfo,
+	CommandInfo* pCommandInfo,
 	t_int countParam
 )
 {
@@ -480,10 +480,10 @@ void utils_call_function(
 	}
 
 	char buf[256];
-	atom_string( & pFunctionInfo->name, buf, 256 );
+	atom_string( & pCommandInfo->name, buf, 256 );
 	DB_PRINT("executing command %s", buf);
 	// call command:
-	(pFunctionInfo -> pFunc) (
+	(pCommandInfo -> pFunc) (
 			rt,
 			countParam,
 			pArgs
@@ -496,31 +496,31 @@ void utils_try_to_exec_immediately(
 		ProgramRTInfo* rt
 )
 {
-	ElementCommand* pElCurrentFunction =
-		ListCommand_get_last ( & rt -> command_stack );
-	if( !pElCurrentFunction )
+	ElementCommand* pElCurrentCommand =
+		CommandStack_get_last ( & rt -> command_stack );
+	if( !pElCurrentCommand )
 		return ;
 	// if the topmost command is a dont-read-all-parameters-command:
-	if( pElCurrentFunction->pData -> pFunctionInfo -> executeAfter != -1)
+	if( pElCurrentCommand->pData -> pCommandInfo -> executeAfter != -1)
 	{
 		DB_PRINT("trying to executed immediately...:");
-		FunctionInfo* pFunctionInfo = pElCurrentFunction->pData -> pFunctionInfo;
-		// check if there are enough values on stack now to call the next function
+		CommandInfo* pCommandInfo = pElCurrentCommand->pData -> pCommandInfo;
+		// check if there are enough values on stack now to call the next command
 		t_int paramCount =
 			AtomList_get_size ( & rt -> stack )
-			- pElCurrentFunction -> pData -> stackHeight0
+			- pElCurrentCommand -> pData -> stackHeight0
 		;
-		if( paramCount== pFunctionInfo -> executeAfter )
+		if( paramCount== pCommandInfo -> executeAfter )
 		{
-			utils_call_function(rt, pFunctionInfo, paramCount);
+			utils_call_command(rt, pCommandInfo, paramCount);
 		}
-		else if( paramCount > pFunctionInfo -> executeAfter)
+		else if( paramCount > pCommandInfo -> executeAfter)
 		{
 			char buf[256];
-			atom_string(& pFunctionInfo->name, buf, 256);
+			atom_string(& pCommandInfo->name, buf, 256);
 			post("ERROR: wrong number of parameters for %s", buf);
 		}
-		ListCommand_del( & rt -> command_stack, pElCurrentFunction);
+		CommandStack_del( & rt -> command_stack, pElCurrentCommand);
 	}
 }
 

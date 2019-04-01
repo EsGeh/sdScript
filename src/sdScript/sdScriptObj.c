@@ -13,7 +13,6 @@ t_class* register_script_class( t_symbol* class_name );
 void sdScript_setup()
 {
 	script_class = register_script_class( gensym("sdScript") );
-	functions_init();
 }
 
 typedef struct _script_obj {

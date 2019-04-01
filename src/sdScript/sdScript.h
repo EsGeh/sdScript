@@ -3,7 +3,7 @@
 
 #include "Global.h"
 #include "SymbolTable.h"
-#include "Function.h"
+#include "Commands.h"
 #include "Map.h"
 
 #include "m_pd.h"
@@ -17,17 +17,17 @@
 */
 
 
-// information kept during runtime for each function:
-typedef struct SCommandInfo {
+// information kept during runtime for each command:
+typedef struct SCmdRuntimeData {
 	t_int stackHeight0;
-	FunctionInfo* pFunctionInfo;
-} CommandInfo;
+	CommandInfo* pCommandInfo;
+} CmdRuntimeData;
 
-DECL_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes)
-DEF_LIST(ListCommand,ElementCommand,CommandInfo,getbytes,freebytes,freebytes);
+DECL_LIST(CommandStack,ElementCommand,CmdRuntimeData,getbytes,freebytes,freebytes)
+DEF_LIST(CommandStack,ElementCommand,CmdRuntimeData,getbytes,freebytes,freebytes);
 
-DECL_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
-DEF_BUFFER(CommandBuf,CommandInfo,getbytes,freebytes)
+DECL_BUFFER(CommandBuf,CmdRuntimeData,getbytes,freebytes)
+DEF_BUFFER(CommandBuf,CmdRuntimeData,getbytes,freebytes)
 
 #define DEL_PROG( prog, size ) \
 		AtomBuf_exit( prog ); \
@@ -54,7 +54,7 @@ typedef struct SProgramRTInfo {
 	// return stack
 	AtomList stack;
 	// CommandStack:
-	ListCommand command_stack;
+	CommandStack command_stack;
 	// instruction pointer
 	t_int peek;
 
@@ -80,7 +80,7 @@ typedef struct SScriptData
 	// global scope for all programs
 	Scope global_scope;
 
-	FunctionInfos* function_infos;
+	CommandInfos* command_infos;
 
 	// while running: stores the execution state
 	ProgStack program_stack;
@@ -138,7 +138,7 @@ void Script_continue(
 INLINE void DEL_RT(ProgramRTInfo* prog_rt, int size)
 {
 	AtomList_exit(  & prog_rt -> stack );
-	ListCommand_exit( & prog_rt -> command_stack );
+	CommandStack_exit( & prog_rt -> command_stack );
 	symtab_del_scope(
 			prog_rt -> rt -> symbol_table,
 			prog_rt -> current_prog_name
